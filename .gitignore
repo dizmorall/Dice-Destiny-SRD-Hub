@@ -1,0 +1,14 @@
+instance/
+__pycache__/
+*.pyc
+*.sqlite
+*.db
+*.db-journal
+.env
+.flaskenv
+venv/
+*.egg-info/
+dist/
+build/
+static/avatars/*
+!static/avatars/default.png # Не исключать дефолтную аватарку

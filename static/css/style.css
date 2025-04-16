@@ -1,0 +1,133 @@
+/* Общие стили */
+body {
+    background-color: #f8f9fa; /* Светло-серый фон для всей страницы */
+    color: #212529;
+}
+
+/* Стили для стартовой страницы index.html */
+.hero-section {
+    background-color: #212529; /* Темный фон */
+    color: #ffffff;
+    padding: 4rem 1rem;
+    margin-bottom: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.hero-section h1 {
+    color: #d93f46; /* Красный акцент */
+    font-weight: bold;
+    margin-bottom: 1rem;
+    font-size: 3rem; /* Крупнее заголовок */
+}
+
+.hero-section .lead {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.srd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Адаптивная сетка */
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.srd-card {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.3rem;
+    padding: 1.5rem;
+    text-align: center;
+    text-decoration: none !important; /* Убрать подчеркивание у ссылки */
+    color: #212529 !important; /* Цвет текста внутри карточки-ссылки */
+    transition: all 0.3s ease-in-out; /* Плавный переход для анимации */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Эффект при наведении на карточку */
+.srd-card:hover {
+    transform: translateY(-5px); /* Приподнимаем карточку */
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15); /* Увеличиваем тень */
+    background-color: #f1f3f5; /* Слегка темнее фон */
+    border-color: #adb5bd;
+    /* color: #000 !important; Цвет текста можно менять при наведении, если нужно */
+}
+
+.srd-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #343a40; /* Темно-серый для заголовка карточки */
+}
+
+.srd-card p {
+    font-size: 0.9rem;
+    color: #6c757d; /* Серый для описания */
+    margin-bottom: 0;
+}
+
+.homebrew-cta {
+    background-color: #ffffff; /* Белый фон для контраста */
+    border: 1px solid #d93f46; /* Красная рамка */
+    border-left: 5px solid #d93f46; /* Толстая левая рамка */
+    padding: 2rem;
+    border-radius: 0.3rem;
+    text-align: center;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.homebrew-cta h2 {
+    color: #d93f46; /* Красный заголовок */
+    margin-bottom: 1rem;
+}
+
+/* Кастомная красная кнопка */
+.btn-dnd-red {
+  color: #fff;
+  background-color: #d93f46; /* Основной красный */
+  border-color: #c71f27; /* Чуть темнее для рамки */
+  padding: 0.6rem 1.2rem;
+  font-size: 1.1rem;
+  border-radius: 0.3rem;
+  transition: all 0.2s ease-in-out;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  text-decoration: none; /* Убрать подчеркивание */
+  display: inline-block; /* Для правильного отображения */
+}
+
+.btn-dnd-red:hover,
+.btn-dnd-red:focus { /* Добавим :focus для доступности */
+  color: #fff;
+  background-color: #b01a21; /* Темнее при наведении/фокусе */
+  border-color: #9e171d;
+  transform: translateY(-2px); /* Эффект "нажатия" */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  text-decoration: none;
+}
+
+/* Стили для кнопок в homebrew-cta (можно настроить) */
+.homebrew-cta .btn-dark:hover {
+    background-color: #000;
+    color: #fff;
+}
+.homebrew-cta .btn-outline-dark:hover {
+    background-color: #343a40;
+    color: #fff;
+}
+
+
+/* Убедимся, что основной контейнер имеет отступы */
+.container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+hr {
+    border-top: 1px solid #dee2e6; /* Стилизация разделителя */
+}

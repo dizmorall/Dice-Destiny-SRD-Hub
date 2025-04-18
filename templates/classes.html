@@ -1,0 +1,112 @@
+{% extends "layout.html" %}
+
+{% block title %}Классы (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+/* Стили для страницы классов */
+.class-grid {
+    display: grid;
+    /* Создаем колонки: минимум 280px, максимум 1fr (равная доля) */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem; /* Отступы между карточками */
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.class-card {
+    background-color: #f0ebe5; /* Светло-бежевый фон, как на скрине */
+    border: 1px solid #dcd6cf; /* Немного темнее рамка */
+    border-radius: 8px; /* Скругленные углы */
+    padding: 1rem 1.5rem; /* Внутренние отступы */
+    display: flex; /* Используем Flexbox для расположения текста и картинки */
+    align-items: center; /* Выравниваем по вертикали */
+    text-decoration: none !important; /* Убираем подчеркивание ссылки */
+    color: #212529 !important; /* Цвет текста по умолчанию */
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    overflow: hidden; /* Чтобы картинка не вылезала за скругленные углы */
+    position: relative; /* Для позиционирования псевдоэлемента затемнения */
+}
+
+.class-card::before { /* Псевдоэлемент для затемнения при наведении */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0); /* Изначально прозрачный */
+    transition: background-color 0.25s ease-in-out;
+    z-index: 1; /* Поверх текста и картинки, но под контентом? Нет, под контентом! */
+}
+
+
+.class-card:hover {
+    transform: translateY(-3px); /* Легкий подъем */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+    border-color: #c9c1b9;
+}
+
+.class-card:hover::before { /* Затемнение при наведении */
+    background-color: rgba(0, 0, 0, 0.08); /* Легкое затемнение */
+}
+
+.class-card-text {
+    flex-grow: 1; /* Текст занимает доступное пространство */
+    margin-right: 1rem; /* Отступ справа от текста до картинки */
+    position: relative; /* Чтобы текст был поверх псевдоэлемента */
+    z-index: 2;
+}
+
+.class-card-text h3 {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 0.1rem;
+    color: #333;
+}
+
+.class-card-text .en-name {
+    font-size: 0.9rem;
+    color: #555;
+    display: block; /* Чтобы было на новой строке */
+    margin-bottom: 0.5rem; /* Небольшой отступ снизу */
+}
+
+.class-card-icon {
+    height: 60px; /* Фиксированная высота иконки */
+    width: auto; /* Ширина подстраивается */
+    max-width: 70px; /* Ограничение ширины */
+    object-fit: contain; /* Масштабировать с сохранением пропорций */
+    margin-left: auto; /* Отодвигаем картинку вправо */
+    opacity: 0.9; /* Чуть прозрачнее */
+    position: relative; /* Чтобы иконка была поверх псевдоэлемента */
+    z-index: 2;
+}
+
+</style>
+
+<div class="container">
+    <h1 class="mt-4 mb-4">Классы (SRD 5.1)</h1>
+    <p class="lead">Выберите класс, чтобы узнать о нем подробнее. В SRD 5.1 доступно только 4 класса.</p>
+
+    <div class="class-grid">
+        {# Перебираем классы из словаря SRD_CLASSES #}
+        {% for class_slug, class_data in classes|dictsort %} {# dictsort для сортировки по ключу #}
+            <a href="{{ url_for('class_detail', class_slug=class_data.slug) }}" class="class-card">
+                <div class="class-card-text">
+                    <h3>{{ class_data.name }}</h3>
+                    <span class="en-name">{{ class_data.en_name }}</span>
+                    {# Можно добавить источник, если нужно: #}
+                    {# <small class="text-muted d-block">SRD 5.1</small> #}
+                </div>
+                {% if class_data.icon %}
+                    <img src="{{ url_for('static', filename=class_data.icon) }}" alt="{{ class_data.name }}" class="class-card-icon">
+                {% endif %}
+            </a>
+        {% else %}
+            <p>Информация о классах пока недоступна.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

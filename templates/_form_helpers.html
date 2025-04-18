@@ -1,0 +1,36 @@
+{# मैक्रो (macro) для рендеринга поля формы Flask-WTF с меткой, ошибками и классом Bootstrap #}
+{% macro render_field(field, label_visible=true, **kwargs) %}
+  {# kwargs используется для передачи HTML атрибутов, таких как class, placeholder и т.д. #}
+
+  {# Основной контейнер для поля и метки #}
+  <div class="mb-3"> {# mb-3 - стандартный нижний отступ Bootstrap #}
+
+    {# Отображаем метку (label), если label_visible=true #}
+    {% if label_visible %}
+      {{ field.label(class="form-label") }}
+    {% endif %}
+
+    {# Отображаем само поле ввода (input, textarea, etc.) #}
+    {# Добавляем класс 'is-invalid' от Bootstrap, если есть ошибки #}
+    {% set field_class = kwargs.pop('class', '') + (' is-invalid' if field.errors else '') %}
+    {{ field(class=field_class, **kwargs) }}
+
+    {# Отображаем ошибки валидации под полем #}
+    {% if field.errors %}
+      <div class="invalid-feedback">
+        {# Перебираем все ошибки для этого поля #}
+        {% for error in field.errors %}
+          <span>{{ error }}</span><br> {# Каждая ошибка с новой строки #}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {# Отображаем описание поля (если оно задано в форме) #}
+    {% if field.description %}
+      <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+
+  </div>
+{% endmacro %}
+
+{# Можно добавить другие макросы сюда, если понадобятся #}

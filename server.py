@@ -226,12 +226,37 @@ def get_comments_with_replies(query_filter):
     return top_level_comments
 
 # --- Данные SRD ---
-SRD_CLASSES = { # Данные SRD
-    'fighter': {'name': 'Воин', 'icon': 'fighter.png', 'description': 'Мастер боя...', 'slug': 'fighter'},
-    'cleric': {'name': 'Жрец', 'icon': 'cleric.png', 'description': 'Представитель богов...', 'slug': 'cleric'},
-    'rogue': {'name': 'Плут', 'icon': 'rogue.png', 'description': 'Мастер скрытности...', 'slug': 'rogue'},
-    'wizard': {'name': 'Волшебник', 'icon': 'wizard.png', 'description': 'Повелитель магии...', 'slug': 'wizard'},
-    # ...
+SRD_CLASSES = {
+    'cleric': {
+        'name': 'Жрец',
+        'en_name': 'Cleric',
+        'icon': 'images/classes/cleric_icon.png', 
+        'description': 'Представитель богов, владеющий божественной магией...',
+        'slug': 'cleric'
+        },
+    'fighter': {
+        'name': 'Воин',
+        'en_name': 'Fighter',
+        'icon': 'images/classes/fighter_icon.png',
+        'description': 'Мастер боя, владеющий любым оружием и доспехами...',
+        'slug': 'fighter'
+        },
+    'rogue': {
+        'name': 'Плут',
+        'en_name': 'Rogue',
+        'icon': 'images/classes/rogue_icon.png', 
+        'description': 'Мастер скрытности, ловушек и точных ударов...',
+        'slug': 'rogue'
+        },
+    'wizard': {
+        'name': 'Волшебник',
+        'en_name': 'Wizard',
+        'icon': 'images/classes/wizard_icon.png', 
+        'description': 'Повелитель тайной магии, изучающий заклинания...',
+        'slug': 'wizard'
+        },
+    # Остальные классы (Bard, Barbarian, Druid, Monk, Paladin, Ranger, Sorcerer, Warlock)
+    # НЕ входят в SRD 5.1. Artificer тем более.
 }
 SRD_SPECIES = { # Данные SRD
     'human': {'name': 'Человек', 'description': 'Самая распространенная раса...', 'slug': 'human'},
@@ -248,10 +273,6 @@ SRD_SPECIES = { # Данные SRD
 @app.route('/index')
 def index():
     return render_template('index.html', title='Dice & Destiny SRD Hub')
-
-@app.route('/hi.html')
-def hi():
-    return render_template('hi.html', title='Wellcum')
 
 # --- Маршруты аутентификации ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -312,7 +333,7 @@ def logout_action():
 # --- Маршруты SRD ---
 @app.route('/srd/classes')
 def list_classes():
-    return render_template('classes.html', title='Классы', classes=SRD_CLASSES.values())
+     return render_template('classes.html', title='Классы', classes=SRD_CLASSES)
 
 @app.route('/srd/class/<string:class_slug>', methods=['GET', 'POST'])
 def class_detail(class_slug):

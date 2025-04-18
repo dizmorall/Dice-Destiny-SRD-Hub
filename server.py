@@ -44,7 +44,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
     avatar_filename = db.Column(db.String(128), default='default.png')
     registered_on = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    description = db.Column(db.Text, nullable=True) # <-- ДОБАВЛЕНО ОПИСАНИЕ
+    description = db.Column(db.Text, nullable=True)
 
     posts = db.relationship('HomebrewPost', backref='author', lazy='dynamic')
     comments = db.relationship('Comment', backref='author', lazy='dynamic')
@@ -337,7 +337,6 @@ def list_classes():
 
 @app.route('/srd/class/<string:class_slug>', methods=['GET', 'POST'])
 def class_detail(class_slug):
-    # ... (без изменений, обрабатывает комментарии)
     srd_item = SRD_CLASSES.get(class_slug)
     if not srd_item: abort(404)
     comment_form = CommentForm(); reply_form = ReplyForm(); page_type = 'class'
@@ -365,7 +364,6 @@ def list_species():
 
 @app.route('/srd/species/<string:species_slug>', methods=['GET', 'POST'])
 def species_detail(species_slug):
-    # ... (без изменений, обрабатывает комментарии)
     srd_item = SRD_SPECIES.get(species_slug)
     if not srd_item: abort(404)
     comment_form = CommentForm(); reply_form = ReplyForm(); page_type = 'species'
@@ -412,7 +410,6 @@ def monsters_info():
 @app.route('/homebrew')
 @login_required
 def homebrew_index():
-    # ... (без изменений)
     page = request.args.get('page', 1, type=int)
     posts = HomebrewPost.query.order_by(HomebrewPost.timestamp.desc()).paginate(
         page=page, per_page=10, error_out=False
@@ -422,7 +419,6 @@ def homebrew_index():
 @app.route('/homebrew/post/<int:post_id>', methods=['GET', 'POST'])
 @login_required
 def post_detail(post_id):
-    # ... (без изменений, обрабатывает комментарии)
     post = HomebrewPost.query.get_or_404(post_id)
     comment_form = CommentForm(); reply_form = ReplyForm()
     if request.method == 'POST':
@@ -444,7 +440,6 @@ def post_detail(post_id):
 @app.route('/homebrew/new_post', methods=['GET', 'POST'])
 @login_required
 def create_post():
-    # ... (без изменений)
     form = HomebrewPostForm()
     if form.validate_on_submit():
         post = HomebrewPost(title=form.title.data, content=form.content.data, author=current_user)

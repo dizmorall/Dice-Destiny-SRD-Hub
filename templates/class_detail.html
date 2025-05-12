@@ -1,0 +1,195 @@
+   {% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}{{ srd_item.name }} - Классы (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .srd-detail-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .srd-detail-icon {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        margin-right: 1.5rem;
+    }
+    .srd-detail-title h1 {
+        margin-bottom: 0.25rem;
+        color: #d93f46;
+    }
+    .srd-detail-title .en-name {
+        font-size: 1.1rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+    .srd-description {
+        font-size: 1.05rem;
+        line-height: 1.7;
+        margin-bottom: 2rem;
+    }
+    .srd-description p {
+        margin-bottom: 1rem;
+        white-space: pre-wrap; 
+    }
+
+   
+    .class-info-section {
+        margin-bottom: 2rem;
+    }
+    .class-info-section h3 {
+        color: #343a40;
+        border-bottom: 2px solid #d93f46;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+    .class-info-section ul {
+        list-style: disc;
+        padding-left: 1.5rem;
+    }
+    .class-info-section ul li {
+        margin-bottom: 0.3rem;
+    }
+    .class-info-section .prof-category {
+        font-weight: bold;
+        margin-top: 0.8rem;
+        display: block;
+    }
+    .features-table th, .features-table td {
+        padding: 0.5rem 0.75rem;
+        vertical-align: top;
+    }
+    .feature-description {
+        margin-top: 1.5rem;
+    }
+    .feature-description h4 {
+        font-size: 1.2rem;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="srd-detail-header">
+        {% if srd_item.icon %}
+            <img src="{{ url_for('static', filename=srd_item.icon) }}" alt="Иконка {{ srd_item.name }}" class="srd-detail-icon">
+        {% endif %}
+        <div class="srd-detail-title">
+            <h1>{{ srd_item.name }}</h1>
+            {% if srd_item.en_name %}
+                <p class="en-name">{{ srd_item.en_name }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="srd-description">
+        <p>{{ srd_item.description | safe }}</p>
+    </div>
+
+    <!-- Информация о классе -->
+    <div class="row">
+        <div class="col-md-8">
+            {# ----- ХИТЫ ----- #}
+            {% if srd_item.hit_dice or srd_item.hp_at_first_level or srd_item.hp_at_higher_levels %}
+            <div class="class-info-section">
+                <h3>Хиты</h3>
+                {% if srd_item.hit_dice %}
+                    <p><strong>Кость Хитов:</strong> {{ srd_item.hit_dice }}</p>
+                {% endif %}
+                {% if srd_item.hp_at_first_level %}
+                    <p><strong>Хиты на 1-м уровне:</strong> {{ srd_item.hp_at_first_level }}</p>
+                {% endif %}
+                {% if srd_item.hp_at_higher_levels %}
+                    <p><strong>Хиты на следующих уровнях:</strong> {{ srd_item.hp_at_higher_levels }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {# ----- ВЛАДЕНИЯ ----- #}
+            {% if srd_item.proficiencies %}
+            <div class="class-info-section">
+                <h3>Владения</h3>
+                {% if srd_item.proficiencies.armor %}
+                    <span class="prof-category">Доспехи:</span> {{ srd_item.proficiencies.armor }}
+                {% endif %}
+                {% if srd_item.proficiencies.weapons %}
+                    <span class="prof-category">Оружие:</span> {{ srd_item.proficiencies.weapons }}
+                {% endif %}
+                {% if srd_item.proficiencies.tools %}
+                    <span class="prof-category">Инструменты:</span> {{ srd_item.proficiencies.tools }}
+                {% endif %}
+                <span class="prof-category">Спасброски:</span> {{ srd_item.proficiencies.saving_throws }}
+                <span class="prof-category">Навыки:</span> {{ srd_item.proficiencies.skills }}
+            </div>
+            {% endif %}
+
+            {# ----- СНАРЯЖЕНИЕ ----- #}
+            {% if srd_item.equipment %}
+            <div class="class-info-section">
+                <h3>Снаряжение</h3>
+                <p>Вы начинаете со следующим снаряжением в дополнение к снаряжению, полученному за вашу предысторию:</p>
+                <ul>
+                    {% for item in srd_item.equipment %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        {# ----- ТАБЛИЦА УМЕНИЙ КЛАССА (Боковая колонка) ----- #}
+        {% if srd_item.features_table %}
+        <div class="col-md-4">
+            <div class="class-info-section">
+                <h3>Умения класса</h3>
+                <table class="table table-sm table-striped features-table">
+                    <thead>
+                        <tr>
+                            <th>Уровень</th>
+                            <th>Умения</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# dictsort по ключу (уровню) #}
+                        {% for level, features in srd_item.features_table|dictsort %}
+                            <tr>
+                                <td>{{ level }}</td>
+                                <td>
+                                    {% for feature in features %}
+                                        {{ feature }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ----- ОПИСАНИЕ УМЕНИЙ КЛАССА ----- #}
+    {% if srd_item.detailed_features %}
+    <div class="class-info-section feature-description">
+        <h3>Описание умений</h3>
+        {# dictsort по ключу (названию умения) #}
+        {% for feature_slug, feature_description in srd_item.detailed_features|dictsort %}
+            <h4>{{ feature_slug|replace('_', ' ')|capitalize }}</h4> {# Преобразуем 'fighting_style' в 'Fighting style' #}
+            <p style="white-space: pre-wrap;">{{ feature_description | safe }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+
+    <hr class="my-4">
+
+    {# Подключаем секцию комментариев #}
+    {% include "_comment_section.html" %}
+
+</div>
+{% endblock %}

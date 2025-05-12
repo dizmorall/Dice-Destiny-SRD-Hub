@@ -1,116 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input {
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            padding: 10px;
-            background-color: #e21212;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #b30000;
-        }
-        .back-link {
-            text-align: center;
-            margin-top: 10px;
-        }
-        .back-link a {
-            text-decoration: none;
-            color: #007bff;
-        }
-        .back-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Register</h1>
-        <form id="register-form">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" required>
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %} {# Импортируем макрос #}
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
+{% block title %}Регистрация - {{ super() }}{% endblock %}
 
-            <label for="confirm-password">Confirm Password</label>
-            <input type="password" id="confirm-password" name="confirm-password" required>
+{% block content %}
+<style>
+    .auth-container {
+        max-width: 400px;
+        margin: 4rem auto;
+    }
+     .auth-card {
+         background-color: #ffffff;
+         border: 1px solid #dee2e6;
+         border-radius: 0.5rem;
+         box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+    }
+    .auth-card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        text-align: center;
+        padding: 1.5rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #d93f46;
+         border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+    }
+     .auth-card-body {
+         padding: 2rem;
+     }
+     .auth-card-body h1 {
+        display: none;
+    }
 
-            <button type="submit">Register</button>
-        </form>
-        <div class="back-link">
-            <button onclick="window.location.href='./hi.html'">Back to Welcome Page</button>
+    /* Стили для кнопки "Регистрация" */
+    .btn-dnd-red {
+      color: #fff;
+      background-color: #d93f46;
+      border-color: #c71f27;
+      transition: all 0.2s ease-in-out;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .btn-dnd-red:hover,
+    .btn-dnd-red:focus {
+      color: #fff;
+      background-color: #b01a21;
+      border-color: #9e171d;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+</style>
+
+<div class="auth-container">
+     <div class="card auth-card">
+        <div class="auth-card-header">
+            Регистрация
+        </div>
+        <div class="card-body auth-card-body">
+            <div class="row justify-content-center">
+                <div class="col-12">
+                    <form method="POST" action="{{ url_for('register') }}" novalidate>
+                        {{ form.hidden_tag() }} {# CSRF токен #}
+
+                        {# Используем макрос для полей формы #}
+                        {{ render_field(form.username, class="form-control", placeholder="Придумайте логин") }}
+                        {{ render_field(form.password, class="form-control", placeholder="Придумайте пароль") }}
+                        {{ render_field(form.confirm_password, class="form-control", placeholder="Повторите пароль") }}
+
+                        <div class="d-grid gap-2 mt-4">
+                            {{ form.submit(class="btn btn-dnd-red btn-lg") }} {# Применяем наш стиль #}
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Отмена</a> {# Кнопка назад #}
+                        </div>
+                    </form>
+
+                     <p class="mt-3 text-center">
+                        Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a>
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
-    <script>
-        document.getElementById('register-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const login = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-
-            if (password !== confirmPassword) {
-                alert('Passwords do not match!');
-                return;
-            }
-
-            const response = await fetch('/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ login, password }),
-            });
-
-            if (response.ok) {
-                alert('Registration successful!');
-                window.location.href = '/login.html';
-            } else {
-                const error = await response.json();
-                alert(`Registration failed: ${error.message}`);
-            }
-        });
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

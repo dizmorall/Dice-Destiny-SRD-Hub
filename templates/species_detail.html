@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}{{ srd_item.name }} - Виды (Расы) (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .srd-detail-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .srd-detail-icon {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        margin-right: 1.5rem;
+        filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.7));
+    }
+     .srd-detail-title h1 {
+        margin-bottom: 0.25rem;
+        color: #d93f46;
+    }
+    .srd-detail-title .en-name {
+        font-size: 1.1rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+    .srd-description {
+        font-size: 1.05rem;
+        line-height: 1.7;
+        margin-bottom: 2rem;
+    }
+     .srd-description p {
+        margin-bottom: 1rem;
+        white-space: pre-wrap; /* Для сохранения переносов */
+    }
+
+    /* Новые стили для секций вида/расы */
+    .species-info-section {
+        margin-bottom: 2rem;
+    }
+     .species-info-section h3 {
+        color: #343a40;
+        border-bottom: 2px solid #d93f46;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+    .species-info-section ul {
+        list-style: disc;
+        padding-left: 1.5rem;
+    }
+    .species-info-section ul li {
+        margin-bottom: 0.5rem;
+    }
+    .species-info-section ul li strong { /* Стиль для названий черт */
+        display: inline-block; /* Чтобы отделить двоеточием */
+        margin-right: 0.5rem;
+    }
+    .subrace-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed #ccc; /* Разделитель для подрасы */
+    }
+    .subrace-section h4 {
+        font-size: 1.3rem;
+        color: #495057;
+        margin-bottom: 1rem;
+    }
+    .subrace-section ul {
+        list-style: circle; /* Другой стиль маркеров для подрасы */
+        padding-left: 1.5rem;
+    }
+     .subrace-section ul li {
+        margin-bottom: 0.4rem;
+    }
+     .subrace-section ul li strong {
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+</style>
+
+<div class="container mt-4">
+    <div class="srd-detail-header">
+        {% if srd_item.icon %}
+            <img src="{{ url_for('static', filename=srd_item.icon) }}" alt="Иконка {{ srd_item.name }}" class="srd-detail-icon">
+        {% endif %}
+        <div class="srd-detail-title">
+            <h1>{{ srd_item.name }}</h1>
+            {% if srd_item.en_name %}
+                <p class="en-name">{{ srd_item.en_name }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="srd-description">
+        <p style="white-space: pre-wrap;">{{ srd_item.description }}</p>
+    </div>
+
+    <!-- Черты расы -->
+    {% if srd_item.traits %}
+    <div class="species-info-section">
+        <h3>Черты вида</h3>
+        <ul>
+            {# Перебираем черты из словаря traits #}
+            {% for trait_slug, trait_description in srd_item.traits.items() %}
+                <li><strong>{{ trait_slug|replace('_', ' ')|capitalize }}:</strong> {{ trait_description | safe }}</li> {# Используем |safe, если описание черты может содержать HTML, как в случае с "Увеличьте значение..." #}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Подрасы -->
+    {% if srd_item.subraces %}
+    <div class="species-info-section">
+        <h3>Подрасы</h3>
+        {% for subrace_slug, subrace_data in srd_item.subraces.items() %}
+            <div class="subrace-section">
+                <h4>{{ subrace_data.name }}</h4>
+                 {% if subrace_data.traits %}
+                 <ul>
+                     {% for trait_slug, trait_description in subrace_data.traits.items() %}
+                         <li><strong>{{ trait_slug|replace('_', ' ')|capitalize }}:</strong> {{ trait_description | safe }}</li>
+                     {% endfor %}
+                 </ul>
+                 {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+
+    <hr class="my-4">
+
+    {# Подключаем секцию комментариев #}
+    {# Для видов тоже нужны комментарии, как и для классов #}
+    {% include "_comment_section.html" %}
+
+</div>
+{% endblock %}

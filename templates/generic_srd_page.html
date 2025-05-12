@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{# Используем блок title из layout.html, добавляя к нему заголовок конкретной страницы #}
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .srd-content h2 {
+        color: #d93f46; /* Красный заголовок для секций */
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #eee; /* Легкий разделитель */
+        padding-bottom: 0.5rem;
+    }
+     .srd-content h3 {
+        color: #343a40; /* Темно-серый для подзаголовков */
+        margin-top: 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+    .srd-content p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        /* Возможно, white-space: pre-wrap; если контент содержит ручные переносы */
+    }
+    .srd-content ul,
+    .srd-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+    .srd-content table {
+        width: 100%;
+        margin-bottom: 1rem;
+        border-collapse: collapse; /* Убираем двойные границы */
+    }
+    .srd-content th,
+    .srd-content td {
+        border: 1px solid #ddd; /* Светлые границы ячеек */
+        padding: 8px; /* Внутренние отступы */
+        text-align: left;
+    }
+    .srd-content th {
+        background-color: #f2f2f2; /* Серый фон для заголовков таблицы */
+        font-weight: bold;
+    }
+    .srd-content tr:nth-child(even) { /* Чередование цветов строк */
+        background-color: #f9f9f9;
+    }
+
+</style>
+
+<div class="container mt-4">
+    <h1>{{ title }}</h1> {# Отображаем заголовок страницы #}
+    <hr>
+
+    <div class="srd-content">
+        {# Сюда будет вставлен HTML-контент, переданный из Flask #}
+        {{ page_content | safe }} {# ИСПОЛЬЗУЕМ |safe, потому что контент - это готовый HTML #}
+    </div>
+
+    {# Для этих страниц комментарии не нужны, поэтому не включаем _comment_section.html #}
+
+</div>
+{% endblock %}

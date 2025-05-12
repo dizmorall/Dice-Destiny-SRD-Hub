@@ -1,0 +1,195 @@
+{% extends "layout.html" %}
+
+{% block title %}Заклинания (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Стили для списка заклинаний */
+    .spell-list ul {
+        list-style: none;
+        padding: 0;
+    }
+    .spell-list li {
+        background-color: #ffffff;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        padding: 12px 15px;
+        transition: background-color 0.2s ease-in-out;
+         display: flex; /* Для выравнивания круга и названия */
+         align-items: center;
+    }
+    .spell-list li:hover {
+        background-color: #f8f9fa;
+    }
+    .spell-list li a {
+        text-decoration: none;
+        color: #333;
+        flex-grow: 1; /* Ссылка занимает все доступное место */
+    }
+     .spell-list .spell-circle {
+        font-weight: bold;
+        color: #d93f46; /* Красный цвет для круга заклинания */
+        margin-right: 15px;
+        min-width: 30px; /* Минимальная ширина для выравнивания, чтобы цифры не прыгали */
+        text-align: center;
+        display: inline-block; /* Для правильного позиционирования */
+     }
+    .spell-list .spell-name {
+        font-size: 1.1rem;
+    }
+     .spell-list .spell-name .en-name { /* Стиль для английского названия, если бы оно было отдельным полем */
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-left: 5px;
+    }
+    .spell-list .spell-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 3px;
+    }
+
+    /* Стили для фильтров/сортировки */
+    .filter-sort-section {
+        margin-bottom: 1.5rem;
+        padding: 1.5rem; /* Увеличил паддинг */
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6; /* Сделал рамку чуть заметнее */
+        border-radius: 0.3rem; /* Как у карточек */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Легкая тень */
+    }
+     .filter-sort-form label {
+         font-weight: 500; /* Немного легче, чем bold */
+         margin-bottom: 0.3rem;
+         display: block;
+         font-size: 0.9rem; /* Чуть меньше метка */
+     }
+     .filter-sort-form .btn {
+        /* Используем стили Bootstrap или наши .btn-dnd-red */
+        padding-top: 0.5rem; /* Выровнять кнопки по высоте с инпутами */
+        padding-bottom: 0.5rem;
+     }
+     .filter-sort-form > div { /* Добавляем нижний отступ для колонок фильтров на мобильных */
+         margin-bottom: 0.75rem;
+     }
+    @media (min-width: 768px) { /* Убираем нижний отступ для md и выше, т.к. они в ряд */
+        .filter-sort-form > div {
+            margin-bottom: 0;
+        }
+    }
+
+</style>
+
+<div class="container mt-4">
+    <h1 class="mb-3">Заклинания (SRD 5.1)</h1>
+    <p class="lead mb-4">Список заклинаний, доступных в System Reference Document 5.1.</p>
+
+    {# Форма поиска и фильтров #}
+    <div class="filter-sort-section">
+        <h5 class="mb-3">Фильтр и Поиск</h5>
+        {# Метод GET для передачи параметров в URL, action - текущий URL #}
+        <form method="GET" action="{{ url_for('spells_list') }}" class="filter-sort-form row g-3 align-items-end">
+             {# Поле поиска #}
+            <div class="col-md-6 col-lg-4">
+                <label for="search">Поиск по названию</label>
+                <input type="text" class="form-control form-control-sm" id="search" name="search" value="{{ search_query }}" placeholder="Название заклинания...">
+            </div>
+
+            {# Фильтр по классу #}
+            <div class="col-md-6 col-lg-2">
+                <label for="class-filter">Класс</label>
+                <select class="form-select form-select-sm" id="class-filter" name="class">
+                    <option value="">Все классы</option> {# Опция "Все" #}
+                    {% for cls_key in all_classes %} {# all_classes - это список ключей классов #}
+                        <option value="{{ cls_key }}" {% if cls_key == filter_class %}selected{% endif %}>
+                            {# Используем маппинг для отображения русского названия, если есть #}
+                            {{ class_names_map.get(cls_key, cls_key|capitalize) }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Фильтр по уровню #}
+            <div class="col-md-6 col-lg-2">
+                 <label for="level-filter">Уровень</label>
+                 <select class="form-select form-select-sm" id="level-filter" name="level">
+                    <option value="">Все уровни</option> {# Опция "Все" #}
+                    {% for level in all_levels %} {# all_levels - это список строк уровней #}
+                         <option value="{{ level }}" {% if level == filter_level %}selected{% endif %}>
+                             {# Форматируем уровень для отображения #}
+                             {% if level == 'cantrip' %}Заговор{% elif level == '0' %}Заговор{% else %}{{ level }} круг{% endif %}
+                         </option>
+                    {% endfor %}
+                 </select>
+            </div>
+
+            {# Фильтр по школе #}
+             <div class="col-md-6 col-lg-2">
+                 <label for="school-filter">Школа</label>
+                 <select class="form-select form-select-sm" id="school-filter" name="school">
+                    <option value="">Все школы</option> {# Опция "Все" #}
+                    {% for school_key in all_schools %} {# all_schools - это список ключей школ #}
+                         <option value="{{ school_key }}" {% if school_key == filter_school %}selected{% endif %}>
+                             {# Используем маппинг для отображения русского названия #}
+                             {{ school_names_map.get(school_key, school_key | capitalize) }}
+                         </option>
+                    {% endfor %}
+                 </select>
+            </div>
+
+            {# Кнопки Применить и Сбросить #}
+            <div class="col-md-auto">
+                 <button type="submit" class="btn btn-dnd-red btn-sm">Применить</button> {# Добавил btn-sm #}
+            </div>
+             <div class="col-md-auto">
+                 <a href="{{ url_for('spells_list') }}" class="btn btn-outline-secondary btn-sm">Сбросить</a> {# Добавил btn-sm #}
+             </div>
+        </form>
+    </div>
+
+    <div class="spell-list mt-4">
+        {% if spells %}
+             <p class="text-muted">Найдено заклинаний: {{ spells|length }}</p>
+            <ul>
+                {% for spell in spells %} {# spells теперь список словарей с ключом 'slug' #}
+                    {% set current_spell_slug = spell.get('slug') %}
+                    {# Проверяем, что есть и слаг, и имя для отображения #}
+                    {% if current_spell_slug and spell.get('name') %}
+                        <li>
+                            {# Используем 'level_display' из подготовленных данных #}
+                            <span class="spell-circle">{{ spell.get('level_display', '?') | replace(' круг', '') | replace('Заговор', '0') }}</span>
+
+                            {# Используем 'slug' для URL #}
+                            <a href="{{ url_for('spell_detail', spell_slug=current_spell_slug) }}">
+                                 <span class="spell-name">{{ spell.get('name') }}</span>
+                                 {# Если бы было русское имя в spell.name_ru, а английское в spell.en_name: #}
+                                 {# <span class="spell-name">{{ spell.get('name_ru', spell.get('name')) }}</span> #}
+                                 {# {% if spell.get('en_name') %} <span class="spell-name en-name">({{ spell.get('en_name') }})</span> {% endif %} #}
+                                 <div class="spell-meta">
+                                     {# Используем отображаемые имена из подготовленных данных #}
+                                     {% if spell.get('school_display') %}
+                                         {{ spell.get('school_display') }}
+                                     {% endif %}
+                                     {% if spell.get('classes_display') %}
+                                         (для {{ spell.classes_display | join(', ') }})
+                                     {% endif %}
+                                 </div>
+                            </a>
+                        </li>
+                    {% else %}
+                        {# Этот блок теперь должен срабатывать реже, т.к. слаг генерируется в Flask, если есть имя #}
+                        <li>
+                             <span class="spell-circle">!</span>
+                             <span class="spell-name text-danger">Ошибка данных для заклинания: {{ spell.get('name', 'Неизвестное') }}</span>
+                             <div class="spell-meta text-danger">Отсутствует поле 'name' или не удалось создать идентификатор.</div>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="mt-3">Нет заклинаний, соответствующих вашим критериям.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+
+{% block title %}Виды (Расы) (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+.species-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Адаптивная сетка */
+    gap: 1.5rem; /* Отступы между карточками */
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.species-card {
+    background-color: #f0ebe5;
+    border: 1px solid #dcd6cf;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    text-decoration: none !important;
+    color: #212529 !important;
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    position: relative;
+}
+.species-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0);
+    transition: background-color 0.25s ease-in-out;
+    z-index: 1;
+}
+.species-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+    border-color: #c9c1b9;
+}
+.species-card:hover::before {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+.species-card-text {
+    flex-grow: 1;
+    margin-right: 1rem;
+    position: relative;
+    z-index: 2;
+}
+.species-card-text h3 {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 0.1rem;
+    color: #333;
+}
+.species-card-text .en-name {
+    font-size: 0.9rem;
+    color: #555;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.species-card-icon {
+    height: 60px;
+    width: auto;
+    max-width: 70px;
+    object-fit: contain;
+    margin-left: auto;
+    opacity: 0.9;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.7));
+}
+
+
+</style>
+
+<div class="container">
+    <h1 class="mt-4 mb-4">Виды (Расы) (SRD 5.1)</h1>
+    <p class="lead">Выберите вид, чтобы узнать о нем подробнее. В SRD 5.1 доступно 4 базовых вида.</p>
+
+    <div class="species-grid">
+        {# Перебираем виды из словаря SRD_SPECIES #}
+        {% for species_slug, species_data in species|dictsort %} {# Передаем весь словарь для dictsort #}
+            <a href="{{ url_for('species_detail', species_slug=species_data.slug) }}" class="species-card">
+                <div class="species-card-text">
+                    <h3>{{ species_data.name }}</h3>
+                    {% if species_data.en_name %}
+                        <span class="en-name">{{ species_data.en_name }}</span>
+                    {% endif %}
+                </div>
+                {% if species_data.icon %}
+                    <img src="{{ url_for('static', filename=species_data.icon) }}" alt="{{ species_data.name }}" class="species-card-icon">
+                {% endif %}
+            </a>
+        {% else %}
+            <p>Информация о видах пока недоступна.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

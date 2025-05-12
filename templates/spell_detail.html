@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+{# {% include "_comment_section.html" %} -- Убедись, что include внизу, после основного контента #}
+
+
+{% block title %}{{ spell.get('name', 'Заклинание') }} - Заклинания (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Стили для страницы деталей заклинания */
+    .spell-detail-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+     .spell-detail-header h1 {
+        margin-bottom: 0.25rem;
+        color: #d93f46;
+    }
+    .spell-detail-header .en-name {
+        font-size: 1.1rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-bottom: 0.5rem;
+    }
+    .spell-meta-info {
+        font-size: 0.95rem;
+        color: #555;
+        margin-bottom: 1.5rem;
+    }
+    .spell-meta-info strong {
+        display: inline-block;
+        min-width: 180px; /* Увеличил ширину для выравнивания меток */
+        margin-right: 10px;
+    }
+    .spell-meta-info p {
+        margin-bottom: 0.5rem;
+    }
+
+    .spell-description-block {
+        font-size: 1.05rem;
+        line-height: 1.7;
+        margin-bottom: 2rem;
+    }
+     .spell-description-block p {
+        margin-bottom: 1rem;
+        white-space: pre-wrap; /* Для сохранения переносов */
+    }
+
+    /* Стили для секций "На более высоких кругах" */
+    .higher-level-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed #ccc;
+        font-style: italic;
+        color: #6c757d;
+    }
+
+
+</style>
+
+<div class="container mt-4">
+    <div class="spell-detail-header">
+        <h1>{{ spell.get('name', 'Неизвестное заклинание') }}</h1>
+        {# В этом JSON нет отдельного en_name, name - это англ. название. Можно отобразить его здесь тоже, если хочется #}
+        {% if spell.get('en_name') %} {# Если бы было отдельное поле с русским #}
+             <p class="en-name">{{ spell.get('en_name') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="spell-meta-info">
+        {# Используем подготовленные данные #}
+        <p><strong>Круг:</strong> {{ spell.get('level_display', '?') }}</p>
+        <p><strong>Школа:</strong> {{ spell.get('school_display', '?') }}</p>
+        <p><strong>Время сотворения:</strong> {{ spell.get('casting_time_display', '?') }}</p>
+        <p><strong>Дистанция:</strong> {{ spell.get('range_display', '?') }}</p>
+        <p><strong>Компоненты:</strong> {{ spell.get('components_display', '?') }}</p>
+        <p><strong>Длительность:</strong> {{ spell.get('duration_display', '?') }}</p>
+        {% if spell.get('concentration') %}
+            <p><strong>Концентрация:</strong> Да</p>
+        {% endif %}
+        {% if spell.get('ritual') %}
+            <p><strong>Ритуал:</strong> Да</p>
+        {% endif %}
+        {% if spell.get('classes_display') %} {# Используем список отображаемых имен #}
+            <p><strong>Классы:</strong> {{ spell.get('classes_display') | join(', ') }}</p>
+        {% endif %}
+         {% if spell.get('type') %} {# Можно отобразить поле 'type' из JSON #}
+            <p><strong>Тип:</strong> {{ spell.get('type', '?') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="spell-description-block">
+        {# Описание заклинания - в этом JSON оно одна строка, но может содержать \n #}
+        <p style="white-space: pre-wrap;">{{ spell.get('description', '') }}</p>
+
+        {# На более высоких кругах - обрабатываем список #}
+        {% if spell.get('higher_level_list') %}
+             <div class="higher-level-section">
+                 <h5>На более высоких кругах</h5>
+                 {% for paragraph in spell.higher_level_list %}
+                     <p style="white-space: pre-wrap;">{{ paragraph }}</p>
+                 {% endfor %}
+             </div>
+        {% endif %}
+    </div>
+
+
+    <hr class="my-4">
+
+    {# Подключаем секцию комментариев #}
+    {% include "_comment_section.html" %}
+
+</div>
+{% endblock %}

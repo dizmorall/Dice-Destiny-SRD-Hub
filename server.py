@@ -272,9 +272,6 @@ ALL_SPELL_CLASSES = sorted(list(set(cls for spell in SRD_SPELLS_LIST for cls in 
 ALL_SPELL_LEVELS = sorted(list(set(spell.get('level_raw', 99) for spell in SRD_SPELLS_LIST)), key=spell_level_sort_key)
 ALL_SPELL_SCHOOLS = sorted(list(set(spell.get('school_raw') for spell in SRD_SPELLS_LIST if spell.get('school_raw'))))
 
-SRD_MONSTERS_LIST = []
-SRD_MONSTERS_DICT = {}
-
 # --- 2. Модели Базы Данных (SQLAlchemy) ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -805,6 +802,192 @@ SRD_SPECIES = { # Данные SRD Видов/Рас
     }
 }
 
+# --- Данные Чудовищ SRD ---
+SRD_MONSTERS = {
+    'goblin': {
+        'name': 'Гоблин',
+        'en_name': 'Goblin',
+        'slug': 'goblin',
+        'icon': 'images/monsters/goblin_icon.png',
+        'size_type_alignment': 'Маленький гуманоид (гоблиноид), нейтрально-злой',
+        'armor_class': '15 (кожаный доспех, щит)',
+        'hit_points': '7 (2к6)',
+        'speed': '30 фт.',
+        'stats': { # Характеристики
+            'STR': '8 (-1)', 'DEX': '14 (+2)', 'CON': '10 (+0)',
+            'INT': '10 (+0)', 'WIS': '8 (-1)', 'CHA': '8 (-1)'
+        },
+        'skills': 'Скрытность +6',
+        'senses': 'Тёмное зрение 60 фт., Пассивное Восприятие 9',
+        'languages': 'Гоблинский, Общий',
+        'challenge': '1/4 (50 опыта)',
+        'abilities': [ # Умения
+            {
+                'name': 'Пронырливый побег (Nimble Escape)',
+                'desc': 'Гоблин может совершать действия Отход или Засада бонусным действием в каждый свой ход.'
+            }
+        ],
+        'actions': [ # Действия
+            {
+                'name': 'Скимитар (Scimitar)',
+                'desc': 'Рукопашная атака оружием: +4 к попаданию, досягаемость 5 фт., одна цель. Попадание: 5 (1к6 + 2) рубящего урона.'
+            },
+            {
+                'name': 'Короткий лук (Shortbow)',
+                'desc': 'Дальнобойная атака оружием: +4 к попаданию, дистанция 80/320 фт., одна цель. Попадание: 5 (1к6 + 2) колющего урона.'
+            }
+        ],
+        'description': 'Гоблины — это маленькие, злобные и хитрые существа, которые часто собираются в большие группы, чтобы терроризировать более цивилизованные народы. Они трусливы поодиночке, но наглы и жестоки в стае.'
+    },
+    'skeleton': {
+        'name': 'Скелет',
+        'en_name': 'Skeleton',
+        'slug': 'skeleton',
+        'icon': 'images/monsters/skeleton_icon.png',
+        'size_type_alignment': 'Средний нежить, законопослушно-злой',
+        'armor_class': '13 (обрывки доспехов)',
+        'hit_points': '13 (2к8 + 4)',
+        'speed': '30 фт.',
+        'stats': {
+            'STR': '10 (+0)', 'DEX': '14 (+2)', 'CON': '15 (+2)',
+            'INT': '6 (-2)', 'WIS': '8 (-1)', 'CHA': '5 (-3)'
+        },
+        'damage_vulnerabilities': 'Дробящий',
+        'damage_immunities': 'Яд',
+        'condition_immunities': 'Истощение, Отравление',
+        'senses': 'Тёмное зрение 60 фт., Пассивное Восприятие 9',
+        'languages': 'Понимает все языки, которые знал при жизни, но не может говорить',
+        'challenge': '1/4 (50 опыта)',
+        'abilities': [], # У скелета в SRD нет особых умений
+        'actions': [
+            {
+                'name': 'Короткий меч (Shortsword)',
+                'desc': 'Рукопашная атака оружием: +4 к попаданию, досягаемость 5 фт., одна цель. Попадание: 5 (1к6 + 2) колющего урона.'
+            },
+            {
+                'name': 'Короткий лук (Shortbow)',
+                'desc': 'Дальнобойная атака оружием: +4 к попаданию, дистанция 80/320 фт., одна цель. Попадание: 5 (1к6 + 2) колющего урона.'
+            }
+        ],
+        'description': 'Анимированные магией кости давно умерших существ, скелеты часто служат стражами или безмозглыми воинами в армиях некромантов.'
+    },
+    'wolf': {
+        'name': 'Волк',
+        'en_name': 'Wolf',
+        'slug': 'wolf',
+        'icon': 'images/monsters/wolf_icon.png',
+        'size_type_alignment': 'Средний зверь, без мировоззрения',
+        'armor_class': '13 (природный доспех)',
+        'hit_points': '11 (2к8 + 2)',
+        'speed': '40 фт.',
+        'stats': {
+            'STR': '12 (+1)', 'DEX': '15 (+2)', 'CON': '12 (+1)',
+            'INT': '3 (-4)', 'WIS': '12 (+1)', 'CHA': '6 (-2)'
+        },
+        'skills': 'Восприятие +3, Скрытность +4',
+        'senses': 'Пассивное Восприятие 13',
+        'languages': '—',
+        'challenge': '1/4 (50 опыта)',
+        'abilities': [
+            {
+                'name': 'Острый слух и нюх (Keen Hearing and Smell)',
+                'desc': 'Волк совершает с преимуществом проверки Мудрости (Восприятие), основанные на слухе или нюхе.'
+            },
+            {
+                'name': 'Тактика стаи (Pack Tactics)',
+                'desc': 'Волк совершает с преимуществом бросок атаки по существу, если как минимум один союзник волка находится в пределах 5 футов от этого существа, и этот союзник не недееспособен.'
+            }
+        ],
+        'actions': [
+            {
+                'name': 'Укус (Bite)',
+                'desc': 'Рукопашная атака оружием: +4 к попаданию, досягаемость 5 фт., одна цель. Попадание: 7 (2к4 + 2) колющего урона. Если цель — существо, она должна преуспеть в спасброске Силы Сл 11, иначе будет сбита с ног.'
+            }
+        ],
+        'description': 'Волки — хищники, охотящиеся стаями. Они умны, быстры и обладают острыми чувствами, что делает их опасными противниками в дикой местности.'
+    }
+}
+
+def challenge_rating_sort_key(cr_str):
+    if "/" in cr_str:
+        try:
+            num, den = map(int, cr_str.split('/'))
+            return num / den
+        except ValueError:
+            return 999 
+    try:
+        return float(cr_str) 
+    except ValueError:
+        return 999
+
+ALL_MONSTER_CHALLENGES = sorted(list(set(
+    monster_data.get('challenge', 'Не указан') for monster_data in SRD_MONSTERS.values()
+)), key=challenge_rating_sort_key)
+
+
+# Уникальные типы существ (извлекаем из 'size_type_alignment')
+def extract_monster_type(size_type_alignment_str):
+    parts = size_type_alignment_str.split(',')
+    if len(parts) > 0:
+        # Берем первую часть до запятой, где обычно размер и тип
+        # Пример: "Маленький гуманоид (гоблиноид)" или "Средний зверь"
+        type_and_size_part = parts[0].strip()
+        words = type_and_size_part.split()
+
+        known_sizes = ["крошечный", "маленький", "средний", "большой", "огромный", "исполинский",
+                       "tiny", "small", "medium", "large", "huge", "gargantuan"]
+
+        actual_type_words = []
+        for word in words:
+            if word.lower().replace('ё', 'е') not in known_sizes:
+                if '(' in word:
+                    actual_type_words.append(word.split('(')[0].strip())
+                    break
+                else:
+                    actual_type_words.append(word.strip())
+            elif actual_type_words and word.startswith('('):
+                 break
+
+
+        if actual_type_words:
+            return " ".join(actual_type_words).capitalize()
+    return None
+
+ALL_MONSTER_TYPES = sorted(list(set(
+    extract_monster_type(monster_data.get('size_type_alignment', ''))
+    for monster_data in SRD_MONSTERS.values()
+    if extract_monster_type(monster_data.get('size_type_alignment', '')) # Убираем None значения
+)))
+
+# Уникальные мировоззрения (извлекаем из 'size_type_alignment')
+def extract_monster_alignment(size_type_alignment_str):
+    parts = size_type_alignment_str.split(',')
+    if len(parts) > 1: 
+        return parts[-1].strip().capitalize() 
+    return None
+
+ALL_MONSTER_ALIGNMENTS = sorted(list(set(
+    extract_monster_alignment(monster_data.get('size_type_alignment', ''))
+    for monster_data in SRD_MONSTERS.values()
+    if extract_monster_alignment(monster_data.get('size_type_alignment', ''))
+)))
+
+# Уникальные размеры (извлекаем из 'size_type_alignment')
+def extract_monster_size(size_type_alignment_str):
+    parts = size_type_alignment_str.split(',')
+    if len(parts) > 0:
+        type_part = parts[0].strip() # "Маленький гуманоид (гоблиноид)"
+        size_words = type_part.split()
+        if len(size_words) > 0:
+            return size_words[0].strip().capitalize()
+    return None
+
+ALL_MONSTER_SIZES = sorted(list(set(
+    extract_monster_size(monster_data.get('size_type_alignment', ''))
+    for monster_data in SRD_MONSTERS.values()
+    if extract_monster_size(monster_data.get('size_type_alignment', ''))
+)))
+
 SRD_STATIC_CONTENT = {
     'character_info': """
     <h2>Основы создания персонажа</h2>
@@ -1321,8 +1504,128 @@ def spell_detail(spell_slug):
     )
 
 @app.route('/srd/monsters')
-def monsters_info():
-     return render_template('generic_srd_page.html', title='Чудовища (Общее)', page_content="Характеристики монстров, типы, среда обитания...")
+def monsters_list():
+    # Получаем параметры фильтров из URL
+    filter_cr = request.args.get('cr', '')
+    filter_type = request.args.get('type', '')
+    filter_alignment = request.args.get('alignment', '')
+    filter_size = request.args.get('size', '')
+
+    # Начинаем с полного списка чудовищ (значений словаря)
+    filtered_monsters_list = list(SRD_MONSTERS.values()) # Преобразуем в список для фильтрации
+
+    # Применяем фильтры
+    if filter_cr:
+        filtered_monsters_list = [
+            monster for monster in filtered_monsters_list
+            if monster.get('challenge', '').strip().lower() == filter_cr.lower()
+        ]
+
+    if filter_type:
+        filtered_monsters_list = [
+            monster for monster in filtered_monsters_list
+            if extract_monster_type(monster.get('size_type_alignment', '')).lower() == filter_type.lower()
+        ]
+
+    if filter_alignment:
+        filtered_monsters_list = [
+            monster for monster in filtered_monsters_list
+            if extract_monster_alignment(monster.get('size_type_alignment', '')).lower() == filter_alignment.lower()
+        ]
+
+    if filter_size:
+        filtered_monsters_list = [
+            monster for monster in filtered_monsters_list
+            if extract_monster_size(monster.get('size_type_alignment', '')).lower() == filter_size.lower()
+        ]
+
+    # Сортируем отфильтрованный список по ПО
+    sorted_monsters = sorted(filtered_monsters_list, key=lambda m: challenge_rating_sort_key(m.get('challenge', '999')))
+
+
+    return render_template(
+        'monsters_list.html',
+        title='Чудовища (SRD 5.1)',
+        monsters=sorted_monsters,
+
+        # Текущие значения фильтров для формы
+        filter_cr=filter_cr,
+        filter_type=filter_type,
+        filter_alignment=filter_alignment,
+        filter_size=filter_size,
+
+        # Опции для выпадающих списков
+        all_challenges=ALL_MONSTER_CHALLENGES,
+        all_types=ALL_MONSTER_TYPES,
+        all_alignments=ALL_MONSTER_ALIGNMENTS,
+        all_sizes=ALL_MONSTER_SIZES
+    )
+
+@app.route('/srd/monster/<string:monster_slug>', methods=['GET', 'POST'])
+def monster_detail(monster_slug):
+    monster = SRD_MONSTERS.get(monster_slug)
+    if not monster:
+        abort(404)
+
+    comment_form = CommentForm()
+    reply_form = ReplyForm()
+    page_type = 'monster'
+    page_slug = monster_slug
+
+    # --- Обработка POST для комментариев ---
+    if request.method == 'POST':
+        if not current_user.is_authenticated:
+             flash('Нужно войти, чтобы комментировать.', 'warning')
+             return redirect(url_for('login', next=request.url))
+
+        is_new_comment = request.form.get('submit_comment') == 'true'
+        is_reply = request.form.get('submit_reply') == 'true'
+        parent_id = request.form.get('parent_id')
+
+        form_to_validate = None
+        if is_new_comment: form_to_validate = comment_form
+        elif is_reply and parent_id: form_to_validate = reply_form
+
+        if form_to_validate and form_to_validate.validate_on_submit():
+            parent_comment_obj = None
+            if parent_id and is_reply:
+                 parent_comment_obj = Comment.query.get(int(parent_id))
+                 if not parent_comment_obj or parent_comment_obj.srd_page_type != page_type or parent_comment_obj.srd_page_slug != page_slug:
+                      flash('Ошибка: неверный родительский комментарий.', 'danger')
+                      return redirect(url_for('monster_detail', monster_slug=page_slug))
+
+            comment = Comment(
+                content=form_to_validate.content.data,
+                author=current_user,
+                srd_page_type=page_type,
+                srd_page_slug=page_slug,
+                parent_comment_id=int(parent_id) if parent_id and is_reply else None
+            )
+            db.session.add(comment)
+            db.session.commit()
+            flash('Комментарий добавлен.' if is_new_comment else 'Ответ добавлен.', 'success')
+
+            redirect_url = url_for('monster_detail', monster_slug=page_slug)
+            if comment.parent_comment_id: redirect_url += f'#comment-{comment.parent_comment_id}'
+            else: redirect_url += f'#comment-{comment.id}'
+            return redirect(redirect_url)
+        elif request.method == 'POST':
+             flash('Ошибка в форме комментария/ответа. Проверьте введенные данные.', 'danger')
+
+    comments = get_comments_with_replies(
+        (Comment.srd_page_type == page_type) & (Comment.srd_page_slug == page_slug)
+    )
+
+    return render_template(
+        'monster_detail.html',
+        title=monster.get('name', 'Чудовище'),
+        monster=monster, 
+        comments=comments,
+        comment_form=comment_form,
+        reply_form=reply_form,
+        page_type=page_type,
+        page_slug=page_slug
+    )
 
 # --- Маршруты Homebrew ---
 @app.route('/homebrew')

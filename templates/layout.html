@@ -71,8 +71,7 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint.startswith('spell_') or request.endpoint == 'spells_list' else '' }}" href="{{ url_for('spells_list') }}">Заклинания</a>
                    </li>
-                         <a class="nav-link {{ 'active' if request.endpoint == 'monsters_info' else '' }}" href="{{ url_for('monsters_info') }}">Чудовища</a>
-                    </li>
+                        <a class="nav-link {{ 'active' if request.endpoint.startswith('monster_') or request.endpoint == 'monsters_list' else '' }}" href="{{ url_for('monsters_list') }}">Чудовища</a>
                      <!-- Ссылка на Homebrew (только для залогиненных) -->
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">

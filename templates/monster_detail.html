@@ -1,0 +1,176 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}{{ monster.name }} - Чудовища (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .monster-detail-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .monster-detail-icon {
+        width: 100px;
+        height: auto;
+        max-height: 120px;
+        object-fit: contain;
+        margin-right: 1.5rem;
+        border-radius: 10px;
+        filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4));
+    }
+    .monster-detail-title h1 {
+        margin-bottom: 0.1rem;
+        color: #d93f46;
+    }
+    .monster-detail-title .size-type-alignment {
+        font-size: 1rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-bottom: 0.5rem;
+    }
+    .monster-stat-block {
+        background-color: #fdfcf9; /* Очень светлый фон для стат-блока */
+        border: 1px solid #eee8d7;
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-bottom: 2rem;
+        font-family: 'Georgia', serif; /* Типичный шрифт для стат-блоков D&D */
+    }
+    .monster-stat-block hr {
+        border-top: 2px solid #c71f27; /* Красный разделитель */
+        margin: 1rem 0;
+    }
+    .monster-stat-block p {
+        margin-bottom: 0.5rem;
+        line-height: 1.5;
+    }
+    .monster-stat-block strong {
+        color: #4a4a4a; /* Темнее для акцентов */
+    }
+    .monster-stat-block .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 0.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .monster-stat-block .stats-grid > div {
+        font-size: 0.9rem;
+    }
+    .monster-stat-block .ability-section,
+    .monster-stat-block .action-section {
+        margin-top: 1rem;
+    }
+    .monster-stat-block .ability-section h4,
+    .monster-stat-block .action-section h4 {
+        font-size: 1.1rem;
+        font-style: italic;
+        color: #5a5a5a;
+        margin-bottom: 0.5rem;
+    }
+     .monster-stat-block .ability-section p,
+    .monster-stat-block .action-section p {
+        margin-bottom: 0.3rem;
+        font-size: 0.95rem;
+    }
+    .monster-description {
+        font-style: italic;
+        color: #444;
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-left: 3px solid #d93f46;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="monster-detail-header">
+        {% if monster.icon %}
+            <img src="{{ url_for('static', filename=monster.icon) }}" alt="Иконка {{ monster.name }}" class="monster-detail-icon">
+        {% endif %}
+        <div class="monster-detail-title">
+            <h1>{{ monster.name }}</h1>
+            {% if monster.en_name %}
+                <p class="text-muted fst-italic">{{ monster.en_name }}</p>
+            {% endif %}
+            <p class="size-type-alignment">{{ monster.size_type_alignment }}</p>
+        </div>
+    </div>
+
+    <div class="monster-stat-block">
+        <p><strong>Класс Доспеха:</strong> {{ monster.armor_class }}</p>
+        <p><strong>Хиты:</strong> {{ monster.hit_points }}</p>
+        <p><strong>Скорость:</strong> {{ monster.speed }}</p>
+        <hr>
+        <div class="stats-grid">
+            <div><strong>СИЛ</strong><br>{{ monster.stats.STR }}</div>
+            <div><strong>ЛОВ</strong><br>{{ monster.stats.DEX }}</div>
+            <div><strong>ТЕЛ</strong><br>{{ monster.stats.CON }}</div>
+            <div><strong>ИНТ</strong><br>{{ monster.stats.INT }}</div>
+            <div><strong>МДР</strong><br>{{ monster.stats.WIS }}</div>
+            <div><strong>ХАР</strong><br>{{ monster.stats.CHA }}</div>
+        </div>
+        <hr>
+        {% if monster.skills %}
+            <p><strong>Навыки:</strong> {{ monster.skills }}</p>
+        {% endif %}
+        {% if monster.damage_vulnerabilities %}
+            <p><strong>Уязвимости к урону:</strong> {{ monster.damage_vulnerabilities }}</p>
+        {% endif %}
+        {% if monster.damage_resistances %}
+            <p><strong>Сопротивления урону:</strong> {{ monster.damage_resistances }}</p>
+        {% endif %}
+        {% if monster.damage_immunities %}
+            <p><strong>Иммунитеты к урону:</strong> {{ monster.damage_immunities }}</p>
+        {% endif %}
+        {% if monster.condition_immunities %}
+            <p><strong>Иммунитеты к состояниям:</strong> {{ monster.condition_immunities }}</p>
+        {% endif %}
+        <p><strong>Чувства:</strong> {{ monster.senses }}</p>
+        <p><strong>Языки:</strong> {{ monster.languages }}</p>
+        <p><strong>Опасность:</strong> {{ monster.challenge }}</p>
+        <hr>
+
+        {% if monster.abilities %}
+        <div class="ability-section">
+            {% for ability in monster.abilities %}
+                <p><strong><em>{{ ability.name }}.</em></strong> {{ ability.desc | safe }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if monster.actions %}
+        <div class="action-section">
+            <h4>Действия</h4>
+            {% for action in monster.actions %}
+                <p><strong><em>{{ action.name }}.</em></strong> {{ action.desc | safe }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if monster.legendary_actions %} {# Если будешь добавлять #}
+        <div class="action-section">
+            <h4>Легендарные Действия</h4>
+            {% for action in monster.legendary_actions %}
+                <p><strong><em>{{ action.name }}.</em></strong> {{ action.desc | safe }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if monster.description %}
+        <div class="monster-description">
+            <p style="white-space: pre-wrap;">{{ monster.description }}</p>
+        </div>
+    {% endif %}
+
+    <hr class="my-4">
+
+    {# Подключаем секцию комментариев #}
+    {% include "_comment_section.html" %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "layout.html" %}
+
+{% block title %}Чудовища (SRD 5.1) - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+.monster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.monster-card {
+    background-color: #f0ebe5; /* Светло-бежевый фон */
+    border: 1px solid #dcd6cf;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    text-decoration: none !important;
+    color: #212529 !important;
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    position: relative;
+}
+.monster-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0);
+    transition: background-color 0.25s ease-in-out;
+    z-index: 1;
+}
+.monster-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+    border-color: #c9c1b9;
+}
+.monster-card:hover::before {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+.monster-card-text {
+    flex-grow: 1;
+    margin-right: 1rem;
+    position: relative;
+    z-index: 2;
+}
+.monster-card-text h3 {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 0.1rem;
+    color: #333;
+}
+.monster-card-text .en-name {
+    font-size: 0.9rem;
+    color: #555;
+    display: block;
+    margin-bottom: 0.3rem;
+}
+.monster-card-text .challenge-rating {
+    font-size: 0.85rem;
+    color: #777;
+    font-style: italic;
+}
+.monster-card-icon {
+    height: 60px;
+    width: auto;
+    max-width: 70px;
+    object-fit: contain;
+    margin-left: auto;
+    filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5)); /* Тень для иконок */
+    position: relative;
+    z-index: 2;
+    border-radius: 10px;
+}
+.filter-sort-section {
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.3rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.filter-sort-form label {
+        font-weight: 500;
+        margin-bottom: 0.3rem;
+        display: block;
+        font-size: 0.9rem;
+}
+.filter-sort-form > div {
+        margin-bottom: 0.75rem;
+}
+@media (min-width: 992px) { /* Для lg и выше убираем нижний отступ */
+        .filter-sort-form > div {
+            margin-bottom: 0;
+        }
+}
+</style>
+
+
+<div class="container">
+    <h1 class="mt-4 mb-3">Чудовища (SRD 5.1)</h1>
+    <p class="lead mb-4">Примеры чудовищ, доступных в System Reference Document 5.1.</p>
+
+    {# Форма фильтров #}
+    <div class="filter-sort-section">
+        <h5 class="mb-3">Фильтры</h5>
+        <form method="GET" action="{{ url_for('monsters_list') }}" class="filter-sort-form row g-3 align-items-end">
+            {# Фильтр по ПО #}
+            <div class="col-md-6 col-lg-2">
+                <label for="cr-filter">ПО</label>
+                <select class="form-select form-select-sm" id="cr-filter" name="cr">
+                    <option value="">Все ПО</option>
+                    {% for cr_val in all_challenges %}
+                        <option value="{{ cr_val }}" {% if cr_val == filter_cr %}selected{% endif %}>{{ cr_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Фильтр по типу существа #}
+            <div class="col-md-6 col-lg-3">
+                <label for="type-filter">Тип существа</label>
+                <select class="form-select form-select-sm" id="type-filter" name="type">
+                    <option value="">Все типы</option>
+                    {% for type_val in all_types %}
+                        <option value="{{ type_val.lower() }}" {% if type_val.lower() == filter_type %}selected{% endif %}>{{ type_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Фильтр по мировоззрению #}
+            <div class="col-md-6 col-lg-3">
+                <label for="alignment-filter">Мировоззрение</label>
+                <select class="form-select form-select-sm" id="alignment-filter" name="alignment">
+                    <option value="">Все мировоззрения</option>
+                    {% for align_val in all_alignments %}
+                        <option value="{{ align_val.lower() }}" {% if align_val.lower() == filter_alignment %}selected{% endif %}>{{ align_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Фильтр по размеру #}
+            <div class="col-md-6 col-lg-2">
+                <label for="size-filter">Размер</label>
+                <select class="form-select form-select-sm" id="size-filter" name="size">
+                    <option value="">Все размеры</option>
+                    {% for size_val in all_sizes %}
+                        <option value="{{ size_val.lower() }}" {% if size_val.lower() == filter_size %}selected{% endif %}>{{ size_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-dnd-red btn-sm">Применить</button>
+            </div>
+            <div class="col-md-auto">
+                <a href="{{ url_for('monsters_list') }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="monster-grid mt-4">
+        {% if monsters %}
+            <p class="text-muted">Найдено чудовищ: {{ monsters|length }}</p>
+            {# Перебираем чудовищ из списка monsters (который уже отфильтрован и отсортирован) #}
+            {% for monster_data in monsters %}
+                <a href="{{ url_for('monster_detail', monster_slug=monster_data.slug) }}" class="monster-card">
+                    <div class="monster-card-text">
+                        <h3>{{ monster_data.name }}</h3>
+                        {% if monster_data.en_name %}
+                            <span class="en-name">{{ monster_data.en_name }}</span>
+                        {% endif %}
+                        {% if monster_data.challenge %}
+                            <span class="challenge-rating">ПО: {{ monster_data.challenge }}</span>
+                        {% endif %}
+                    </div>
+                    {% if monster_data.icon %}
+                        <img src="{{ url_for('static', filename=monster_data.icon) }}" alt="{{ monster_data.name }}" class="monster-card-icon">
+                    {% endif %}
+                </a>
+            {% endfor %}
+        {% else %}
+            <p class="mt-3">Нет чудовищ, соответствующих вашим критериям.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

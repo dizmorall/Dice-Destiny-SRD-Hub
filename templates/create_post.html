@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}{{ title }} - Homebrew - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .create-post-container { 
+        max-width: 800px; 
+        margin: 2rem auto;
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    }
+    .create-post-container h2 {
+        color: #d93f46;
+        margin-bottom: 1.5rem; 
+        text-align: center;
+    }
+    #content { 
+        min-height: 250px;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="create-post-container">
+        <h2 class="mb-4">{{ title }}</h2>
+        {# Если редактируем, action ведет на edit_homebrew_post, иначе на create_post #}
+        <form method="POST" action="{{ url_for(request.endpoint, post_id=post_id) if post_id else url_for('create_post') }}" novalidate>
+            {{ form.hidden_tag() }} {# CSRF токен #}
+
+            {{ render_field(form.title, class="form-control form-control-lg", placeholder="Заголовок вашего хоумбрю") }}
+
+            {{ render_field(form.category, class="form-select") }} {# SelectField для темы #}
+
+            {{ render_field(form.content, class="form-control", rows="15", placeholder="Опишите здесь ваш хоумбрю материал подробно. Вы можете использовать Markdown для форматирования.") }}
+            <small class="form-text text-muted">Поддерживается базовый Markdown для форматирования (например, **жирный**, *курсив*, списки).</small>
+
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                 <a href="{{ url_for('homebrew_index') }}" class="btn btn-outline-secondary me-md-2">Отмена</a>
+                 {{ form.submit(class="btn btn-dnd-red") }}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

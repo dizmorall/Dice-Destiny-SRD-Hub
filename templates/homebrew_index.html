@@ -1,0 +1,183 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %} {# Если вдруг понадобится форма, но здесь не используется #}
+
+{% block title %}Homebrew Форум - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .homebrew-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    .post-card {
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: box-shadow 0.2s ease-in-out;
+    }
+    .post-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .post-card h4 a {
+        color: #d93f46;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .post-card h4 a:hover {
+        text-decoration: underline;
+    }
+    .post-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-bottom: 0.75rem;
+    }
+    .post-meta .author-link {
+        color: #555;
+        font-weight: 500;
+        text-decoration: none;
+    }
+    .post-meta .author-link:hover {
+        text-decoration: underline;
+    }
+    .post-meta .post-category {
+        background-color: #e9ecef;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        margin-left: 10px;
+        color: #495057;
+    }
+    .post-excerpt {
+        color: #495057;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    .community-rules {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 1.5rem;
+        border-radius: 5px;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+    }
+    .community-rules h4 {
+        color: #d93f46;
+        margin-bottom: 1rem;
+    }
+    .filter-form-hb {
+        margin-bottom: 1.5rem;
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        border: 1px solid #eee;
+    }
+    .moderation-actions-list a,
+    .moderation-actions-list button { 
+        font-size: 0.8rem !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="homebrew-header">
+        <h1>Homebrew Форум</h1>
+        <a href="{{ url_for('create_post') }}" class="btn btn-dnd-red">Создать новый пост</a>
+    </div>
+    <p class="lead">Делитесь своими авторскими материалами, обсуждайте и находите вдохновение!</p>
+
+    {# Форма фильтрации по категории #}
+    <form method="GET" action="{{ url_for('homebrew_index') }}" class="row g-3 align-items-end filter-form-hb">
+        <div class="col-md-4">
+            <label for="category-filter" class="form-label">Фильтр по теме:</label>
+            <select name="category" id="category-filter" class="form-select form-select-sm">
+                <option value="">Все темы</option>
+                {% for cat_key, cat_name in all_categories %} {# all_categories = список кортежей (ключ, значение) #}
+                    <option value="{{ cat_key }}" {% if cat_key == selected_category %}selected{% endif %}>{{ cat_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-auto">
+            <button type="submit" class="btn btn-secondary btn-sm">Применить</button>
+        </div>
+         {% if selected_category %}
+         <div class="col-md-auto">
+            <a href="{{ url_for('homebrew_index') }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+        </div>
+        {% endif %}
+    </form>
+
+
+    {% if posts_pagination.items %}
+        {% for post in posts_pagination.items %}
+            <div class="card post-card">
+                <h4><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h4>
+                <div class="post-meta">
+                    Автор: <a href="{{ url_for('profile', username_to_view=post.author.username) }}" class="author-link">{{ post.author.username }}</a> |
+                    Опубликовано: {{ post.timestamp.strftime('%d.%m.%Y в %H:%M') }}
+                    {% if post.category and HOMEBREW_TOPICS.get(post.category) %}
+                        | <span class="post-category">Тема: {{ HOMEBREW_TOPICS.get(post.category) }}</span>
+                    {% endif %}
+                </div>
+                <div class="post-excerpt">
+                    {# Показываем первые 250 символов контента, можно настроить #}
+                    {{ post.content[:250] | striptags | safe }}{% if post.content|length > 250 %}...{% endif %}
+                </div>
+
+                {# Кнопки модерации для списка постов (только для админов/модераторов) #}
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'moderator'] %}
+                    <div class="mt-2 moderation-actions-list">
+                        <form method="POST" action="{{ url_for('delete_homebrew_post', post_id=post.id) }}" style="display: inline;"
+                              onsubmit="return confirm('Вы уверены, что хотите УДАЛИТЬ этот пост? Это действие необратимо.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Удалить (Модератор)</button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        {# Пагинация #}
+        {% if posts_pagination.pages > 1 %}
+        <nav aria-label="Навигация по постам" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {# Ссылка на предыдущую страницу #}
+                <li class="page-item {% if not posts_pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('homebrew_index', page=posts_pagination.prev_num, category=selected_category) if posts_pagination.has_prev else '#'}}">« Назад</a>
+                </li>
+
+                {# Номера страниц #}
+                {% for page_num in posts_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == posts_pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('homebrew_index', page=page_num, category=selected_category) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {# Ссылка на следующую страницу #}
+                <li class="page-item {% if not posts_pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('homebrew_index', page=posts_pagination.next_num, category=selected_category) if posts_pagination.has_next else '#'}}">Вперед »</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <p class="mt-3 alert alert-info">Пока нет ни одного поста {% if selected_category %}в этой теме{% else %}на форуме{% endif %}. Будьте первым, <a href="{{ url_for('create_post') }}">создайте пост</a>!</p>
+    {% endif %}
+
+    <div class="community-rules">
+        {{ community_rules }} {# Отображаем правила #}
+    </div>
+</div>
+{% endblock %}

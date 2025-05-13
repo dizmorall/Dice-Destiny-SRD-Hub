@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}{{ post.title }} - Homebrew - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .post-content-section {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .post-header h1 {
+        color: #d93f46;
+        margin-bottom: 0.5rem;
+        font-size: 2.2rem;
+    }
+    .post-meta-detail {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 1rem;
+    }
+    .post-meta-detail .author-link {
+        font-weight: bold;
+        color: #555;
+        text-decoration: none;
+    }
+     .post-meta-detail .author-link:hover {
+        text-decoration: underline;
+    }
+    .post-meta-detail .post-category-detail {
+        background-color: #e9ecef;
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        margin-left: 10px;
+        color: #495057;
+    }
+    .post-body {
+        line-height: 1.7;
+        font-size: 1.05rem;
+        margin-bottom: 1.5rem;
+    }
+    .post-body h2, .post-body h3, .post-body h4 {
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+        color: #333;
+    }
+    .post-body hr {
+        margin: 1.5em 0;
+    }
+    .post-body blockquote {
+        border-left: 3px solid #d93f46;
+        padding-left: 1em;
+        margin-left: 0;
+        font-style: italic;
+        color: #555;
+    }
+    .post-body table {
+        width: 100%;
+        margin-bottom: 1rem;
+        border-collapse: collapse;
+    }
+    .post-body th, .post-body td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .post-body th {
+        background-color: #f2f2f2;
+    }
+
+    .moderation-actions {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+        text-align: right; 
+    }
+    .moderation-actions .btn {
+        margin-left: 0.5rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="post-content-section">
+        <div class="post-header">
+            <h1>{{ post.title }}</h1>
+            <div class="post-meta-detail">
+                Опубликовано: {{ post.timestamp.strftime('%d.%m.%Y в %H:%M') }} |
+                Автор: <a href="{{ url_for('profile', username_to_view=post.author.username) }}" class="author-link">{{ post.author.username }}</a>
+                {% if post.category and HOMEBREW_TOPICS.get(post.category) %}
+                    | <span class="post-category-detail">Тема: {{ HOMEBREW_TOPICS.get(post.category) }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {# Контент поста, обработанный через Markdown фильтр #}
+        <div class="post-body">
+            {{ post.content | markdown | safe }} {# Используем |markdown и |safe #}
+        </div>
+
+        {# Кнопки модерации #}
+        {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.role in ['admin', 'moderator']) %}
+            <div class="moderation-actions">
+                {% if current_user.id == post.user_id %}
+                    <a href="{{ url_for('edit_homebrew_post', post_id=post.id) }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                {% endif %}
+                {# Только админ/модератор или автор может удалить #}
+                 <form method="POST" action="{{ url_for('delete_homebrew_post', post_id=post.id) }}" style="display: inline;"
+                       onsubmit="return confirm('Вы уверены, что хотите УДАЛИТЬ этот пост? Это действие необратимо.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                 </form>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Секция комментариев #}
+    {% include "_comment_section.html" %}
+
+</div>
+{% endblock %}

@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 
     <!-- Bootstrap CSS (для быстрой разметки и компонентов) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
 
-    <!-- Ваши кастомные стили (ДОЛЖНЫ БЫТЬ ПОСЛЕ Bootstrap, чтобы переопределять) -->
+    <!-- Кастомные стили (ДОЛЖНЫ БЫТЬ ПОСЛЕ Bootstrap, чтобы переопределять) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
     <!-- Динамический заголовок страницы -->
     <title>{% block title %}{{ title or 'Dice & Destiny SRD Hub' }}{% endblock %}</title>
 
     <style>
-        /* Дополнительные стили для навбара, если нужно */
         .navbar {
             box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
@@ -29,10 +29,9 @@
         .nav-link {
             transition: color 0.2s ease-in-out;
         }
-         /* Стиль для активной ссылки в навбаре */
         .nav-link.active {
             font-weight: bold;
-            color: #d93f46 !important; /* Красный цвет для активной ссылки */
+            color: #d93f46 !important;
         }
     </style>
 </head>
@@ -51,31 +50,36 @@
                 <!-- Основные ссылки SRD -->
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.endpoint == 'list_classes' else '' }}" href="{{ url_for('list_classes') }}">Классы</a>
+                        {# Проверяем, что request.endpoint существует перед вызовом startswith #}
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'list_classes' else '' }}" href="{{ url_for('list_classes') }}">Классы</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.endpoint == 'list_species' else '' }}" href="{{ url_for('list_species') }}">Виды</a>
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'list_species' else '' }}" href="{{ url_for('list_species') }}">Виды</a>
                     </li>
                     <li class="nav-item">
-                         <a class="nav-link {{ 'active' if request.endpoint == 'character_info' else '' }}" href="{{ url_for('character_info') }}">Персонаж</a>
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'character_info' else '' }}" href="{{ url_for('character_info') }}">Персонаж</a>
                     </li>
                     <li class="nav-item">
-                         <a class="nav-link {{ 'active' if request.endpoint == 'equipment' else '' }}" href="{{ url_for('equipment') }}">Экипировка</a>
-                    </li>
-                     <li class="nav-item">
-                         <a class="nav-link {{ 'active' if request.endpoint == 'gameplay' else '' }}" href="{{ url_for('gameplay') }}">Геймплей</a>
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'equipment' else '' }}" href="{{ url_for('equipment') }}">Экипировка</a>
                     </li>
                     <li class="nav-item">
-                         <a class="nav-link {{ 'active' if request.endpoint == 'combat' else '' }}" href="{{ url_for('combat') }}">Сражение</a>
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'gameplay' else '' }}" href="{{ url_for('gameplay') }}">Геймплей</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.endpoint.startswith('spell_') or request.endpoint == 'spells_list' else '' }}" href="{{ url_for('spells_list') }}">Заклинания</a>
-                   </li>
-                        <a class="nav-link {{ 'active' if request.endpoint.startswith('monster_') or request.endpoint == 'monsters_list' else '' }}" href="{{ url_for('monsters_list') }}">Чудовища</a>
-                     <!-- Ссылка на Homebrew (только для залогиненных) -->
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'combat' else '' }}" href="{{ url_for('combat') }}">Сражение</a>
+                    </li>
+                    <li class="nav-item">
+                        {# Для ссылок, где используется startswith #}
+                        <a class="nav-link {{ 'active' if request.endpoint and (request.endpoint.startswith('spell_') or request.endpoint == 'spells_list') else '' }}" href="{{ url_for('spells_list') }}">Заклинания</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint and (request.endpoint.startswith('monster_') or request.endpoint == 'monsters_list') else '' }}" href="{{ url_for('monsters_list') }}">Чудовища</a>
+                    </li>
+                    <!-- Ссылка на Homebrew (только для залогиненных) -->
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.path.startswith('/homebrew') else '' }}" href="{{ url_for('homebrew_index') }}">Homebrew</a>
+                        {# Здесь request.path используется, request.endpoint может быть None, если это 404 на /homebrew/* #}
+                        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('homebrew_') or request.endpoint in ['create_post', 'post_detail', 'edit_homebrew_post'] else '' }}" href="{{ url_for('homebrew_index') }}">Homebrew</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -83,26 +87,23 @@
                 <!-- Ссылки пользователя (справа) -->
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
-                        <!-- Если пользователь вошел -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle {{ 'active' if request.endpoint and request.endpoint == 'profile' else '' }}" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="{{ current_user.get_avatar() }}" alt="Аватар" class="profile-avatar-nav">
                                 {{ current_user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('profile') }}">Профиль</a></li>
-                                {# Можно добавить другие ссылки (Настройки, Мои посты и т.д.) #}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('logout_page') }}">Выйти</a></li>
                             </ul>
                         </li>
                     {% else %}
-                        <!-- Если пользователь не вошел -->
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint == 'login' else '' }}" href="{{ url_for('login') }}">Войти</a>
+                            <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'login' else '' }}" href="{{ url_for('login') }}">Войти</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint == 'register' else '' }}" href="{{ url_for('register') }}">Регистрация</a>
+                            <a class="nav-link {{ 'active' if request.endpoint and request.endpoint == 'register' else '' }}" href="{{ url_for('register') }}">Регистрация</a>
                         </li>
                     {% endif %}
                 </ul>

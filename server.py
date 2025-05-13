@@ -3,22 +3,31 @@ import secrets
 import json
 import re
 from datetime import datetime
+from markupsafe import Markup
+import markdown
 from PIL import Image
 from flask import Flask, render_template, request, flash, redirect, url_for, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm, CSRFProtect
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, FileField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, FileField, SelectField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, Optional, Regexp
 from flask_wtf.file import FileAllowed
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from config import Config
 from datetime import datetime, timezone
+import click
 
 # --- 1. Инициализация приложения и расширений ---
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_object(Config)
+
+@app.template_filter('markdown')
+def markdown_to_html_filter(text):
+    if text:
+        return Markup(markdown.markdown(text, extensions=['fenced_code', 'nl2br']))
+    return ''
 
 @app.context_processor
 def inject_now():
@@ -52,6 +61,18 @@ CLASS_NAMES = {
     "bard": "Бард", "cleric": "Жрец", "druid": "Друид",
     "paladin": "Паладин", "ranger": "Следопыт", "sorcerer": "Чародей",
     "warlock": "Колдун", "wizard": "Волшебник", "artificer": "Изобретатель"
+}
+
+HOMEBREW_TOPICS = {
+    'classes': 'Новые классы и архетипы',
+    'species': 'Новые расы и подрасы',
+    'spells': 'Новые заклинания',
+    'items': 'Магические предметы',
+    'monsters': 'Монстры и существа',
+    'adventures': 'Приключения и модули',
+    'rules': 'Правила и механики (хомрулы)',
+    'settings': 'Миры и сеттинги',
+    'discussion': 'Общее обсуждение и оффтоп'
 }
 
 # --- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ СОРТИРОВКИ УРОВНЕЙ ---
@@ -189,7 +210,7 @@ for spell_raw in SRD_SPELLS_LIST_RAW:
 
 
     components_data = system_data.get('components', {})
-    components_raw_str = components_data.get('raw') # Не ставим '?' по умолчанию здесь
+    components_raw_str = components_data.get('raw')
     components_display_parts = []
     if components_data.get('vocal'): components_display_parts.append("В")
     if components_data.get('somatic'): components_display_parts.append("С")
@@ -213,7 +234,7 @@ for spell_raw in SRD_SPELLS_LIST_RAW:
     elif not components_display_str and not actual_materials_str and components_raw_str:
         # Если V, S, M не определены, но есть raw строка, используем ее
         components_display_str = components_raw_str
-    elif not components_display_str: # Если все еще пусто
+    elif not components_display_str:
         components_display_str = "?"
 
 
@@ -267,6 +288,7 @@ for spell_raw in SRD_SPELLS_LIST_RAW:
     SRD_SPELLS_LIST.append(spell_processed)
     SRD_SPELLS_DICT[slug] = spell_processed
 
+ALL_HOMEBREW_CATEGORIES_FOR_FILTER = list(HOMEBREW_TOPICS.items())
 
 ALL_SPELL_CLASSES = sorted(list(set(cls for spell in SRD_SPELLS_LIST for cls in spell.get('classes_raw', []))))
 ALL_SPELL_LEVELS = sorted(list(set(spell.get('level_raw', 99) for spell in SRD_SPELLS_LIST)), key=spell_level_sort_key)
@@ -279,10 +301,13 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
     avatar_filename = db.Column(db.String(128), default='default.png')
     registered_on = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    role = db.Column(db.String(20), default='user', nullable=False)
     description = db.Column(db.Text, nullable=True)
 
-    posts = db.relationship('HomebrewPost', backref='author', lazy='dynamic')
-    comments = db.relationship('Comment', backref='author', lazy='dynamic')
+    posts = db.relationship('HomebrewPost', backref='author', lazy='dynamic',
+                            cascade="all, delete-orphan")
+    comments = db.relationship('Comment', backref='author', lazy='dynamic',
+                               cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -304,10 +329,16 @@ class Comment(db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('homebrew_post.id'), nullable=True)
-    srd_page_type = db.Column(db.String(50), nullable=True)
-    srd_page_slug = db.Column(db.String(100), nullable=True)
+    srd_page_type = db.Column(db.String(50), nullable=True) 
+    srd_page_slug = db.Column(db.String(100), nullable=True) 
     parent_comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True)
-    replies = db.relationship('Comment', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+    replies = db.relationship(
+        'Comment', 
+        backref=db.backref('parent_comment_obj', remote_side=[id]), 
+                                                                
+        lazy='dynamic',
+        cascade="all, delete-orphan" 
+    )
 
     def __repr__(self):
         return f'<Comment {self.id} by User {self.user_id}>'
@@ -318,9 +349,13 @@ class HomebrewPost(db.Model):
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    category = db.Column(db.String(50), nullable=False, index=True)
 
-    comments = db.relationship('Comment', backref='post', lazy='dynamic',
-                               foreign_keys=[Comment.post_id], cascade="all, delete-orphan")
+    comments = db.relationship('Comment',
+                               backref='post', 
+                               lazy='dynamic',
+                               cascade="all, delete-orphan",
+                               foreign_keys=[Comment.post_id]) 
 
     def __repr__(self):
         return f'<HomebrewPost {self.title}>'
@@ -373,9 +408,11 @@ class ReplyForm(FlaskForm):
     submit = SubmitField('Ответить')
 
 class HomebrewPostForm(FlaskForm):
-    title = StringField('Заголовок', validators=[DataRequired(), Length(min=5, max=150)])
-    content = TextAreaField('Содержание', validators=[DataRequired(), Length(min=10)])
-    submit = SubmitField('Опубликовать')
+    title = StringField('Заголовок поста', validators=[DataRequired(), Length(min=5, max=150)])
+    category = SelectField('Тема (Категория)', choices=[(key, value) for key, value in HOMEBREW_TOPICS.items()],
+                           validators=[DataRequired(message="Пожалуйста, выберите тему.")])
+    content = TextAreaField('Содержание поста', validators=[DataRequired(), Length(min=20)])
+    submit = SubmitField('Опубликовать пост')
 
 
 class ProfileUpdateForm(FlaskForm):
@@ -1246,7 +1283,6 @@ def index():
 # --- Маршруты аутентификации ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # ... (без изменений)
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = LoginForm()
@@ -1377,6 +1413,7 @@ def gameplay():
 def combat():
      content = SRD_STATIC_CONTENT.get('combat', '<p>Контент для этой страницы пока недоступен.</p>')
      return render_template('generic_srd_page.html', title='Сражение', page_content=content)
+
 @app.route('/srd/spells')
 def spells_list():
     search_query = request.args.get('search', '').strip()
@@ -1495,7 +1532,7 @@ def spell_detail(spell_slug):
     return render_template(
         'spell_detail.html',
         title=spell.get('name', 'Заклинание'), # Используем русское название
-        spell=spell, # Передаем уже обработанные данные заклинания
+        spell=spell,
         comments=comments,
         comment_form=comment_form,
         reply_form=reply_form,
@@ -1627,122 +1664,350 @@ def monster_detail(monster_slug):
         page_slug=page_slug
     )
 
+@app.route('/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    comment_to_delete = Comment.query.get_or_404(comment_id)
+
+    # Проверка прав: автор ИЛИ модератор/админ
+    can_delete = (comment_to_delete.author == current_user or 
+                  (current_user.is_authenticated and current_user.role in ['admin', 'moderator']))
+
+    if not can_delete:
+        flash('У вас нет прав для удаления этого комментария.', 'danger')
+        return redirect(request.referrer or url_for('index'))
+
+    redirect_back_url = request.referrer or url_for('index') 
+    parent_anchor_id = None 
+
+    if comment_to_delete.post_id: 
+        if comment_to_delete.parent_comment_id:
+            parent_anchor_id = comment_to_delete.parent_comment_id
+        redirect_back_url = url_for('post_detail', post_id=comment_to_delete.post_id)
+    elif comment_to_delete.srd_page_type and comment_to_delete.srd_page_slug: # Комментарий к SRD
+        if comment_to_delete.parent_comment_id:
+            parent_anchor_id = comment_to_delete.parent_comment_id
+        
+        endpoint_name = f"{comment_to_delete.srd_page_type}_detail"
+        slug_param_name = f"{comment_to_delete.srd_page_type}_slug"
+        try:
+            redirect_back_url = url_for(endpoint_name, **{slug_param_name: comment_to_delete.srd_page_slug})
+        except Exception as e:
+            print(f"BuildError for SRD comment redirect: {e}")
+            redirect_back_url = url_for('index') # На крайний случай
+
+    try:
+        if parent_anchor_id:
+            redirect_back_url += f'#comment-{parent_anchor_id}'
+        else:
+             redirect_back_url += '#comments'
+
+
+        db.session.delete(comment_to_delete)
+        db.session.commit()
+        flash('Комментарий успешно удален.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Ошибка при удалении комментария.', 'danger')
+        print(f"Error deleting comment: {e}")
+
+    return redirect(redirect_back_url)
+
+
 # --- Маршруты Homebrew ---
-@app.route('/homebrew')
+@app.route('/homebrew/', methods=['GET'])
 @login_required
 def homebrew_index():
     page = request.args.get('page', 1, type=int)
-    posts = HomebrewPost.query.order_by(HomebrewPost.timestamp.desc()).paginate(
+    selected_category_key = request.args.get('category', '')
+
+    query = HomebrewPost.query 
+
+    if selected_category_key:
+        query = query.filter_by(category=selected_category_key)
+
+    posts_pagination = query.order_by(HomebrewPost.timestamp.desc()).paginate(
         page=page, per_page=10, error_out=False
     )
-    return render_template('homebrew_index.html', title='Homebrew Форум', posts=posts)
+
+    community_rules = """
+    <h4>Правила Сообщества Homebrew Раздела:</h4>
+    <ol>
+        <li><strong>Уважение:</strong> Относитесь с уважением ко всем участникам. Конструктивная критика приветствуется, оскорбления и нападки запрещены.</li>
+        <li><strong>Авторское право:</strong> Публикуйте только свои материалы или те, на которые у вас есть право публикации. Указывайте источники, если используете чужие идеи.</li>
+        <li><strong>Релевантность:</strong> Старайтесь публиковать материалы, соответствующие тематике D&D 5e и выбранной категории.</li>
+        <li><strong>Оформление:</strong> Старайтесь делать посты читаемыми и понятными. Используйте форматирование, если это необходимо.</li>
+        <li><strong>Без спама:</strong> Не публикуйте рекламу или нерелевантный контент.</li>
+        <li><strong>Модерация:</strong> Администрация и модераторы оставляют за собой право удалять посты и комментарии, нарушающие правила, а также блокировать пользователей за систематические нарушения.</li>
+    </ol>
+    """
+
+    return render_template(
+        'homebrew_index.html',
+        title='Homebrew Форум',
+        posts_pagination=posts_pagination,
+        all_categories=ALL_HOMEBREW_CATEGORIES_FOR_FILTER,
+        selected_category=selected_category_key,
+        community_rules=Markup(community_rules),
+        HOMEBREW_TOPICS=HOMEBREW_TOPICS
+    )
+
+@app.route('/homebrew/post/<int:post_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_homebrew_post(post_id):
+    post_to_edit = HomebrewPost.query.get_or_404(post_id)
+    if post_to_edit.author != current_user:
+        flash('Вы можете редактировать только свои посты.', 'danger')
+        return redirect(url_for('post_detail', post_id=post_id))
+
+    form = HomebrewPostForm(obj=post_to_edit)
+    if form.validate_on_submit():
+        post_to_edit.title = form.title.data
+        post_to_edit.content = form.content.data
+        post_to_edit.category = form.category.data
+        post_to_edit.timestamp = datetime.utcnow()
+        try:
+            db.session.commit()
+            flash('Пост успешно обновлен!', 'success')
+            return redirect(url_for('post_detail', post_id=post_to_edit.id))
+        except Exception as e:
+            db.session.rollback()
+            flash('Ошибка при обновлении поста.', 'danger')
+            print(f"Error editing post: {e}")
+            
+    return render_template('create_post.html', title=f'Редактировать: {post_to_edit.title}', form=form, post_id=post_id)
 
 @app.route('/homebrew/post/<int:post_id>', methods=['GET', 'POST'])
 @login_required
 def post_detail(post_id):
     post = HomebrewPost.query.get_or_404(post_id)
-    comment_form = CommentForm(); reply_form = ReplyForm()
+    comment_form = CommentForm() 
+    reply_form = ReplyForm()  
+
+    # --- Обработка POST-запросов ---
     if request.method == 'POST':
-        parent_id = request.form.get('parent_id'); form_to_validate = reply_form if parent_id else comment_form
-        if form_to_validate.validate_on_submit():
-            parent_comment = None
-            if parent_id:
-                 parent_comment = Comment.query.get(int(parent_id))
-                 if not parent_comment or parent_comment.post_id != post_id:
-                      flash('Не удалось найти родительский комментарий.', 'danger'); return redirect(url_for('post_detail', post_id=post_id))
-            comment = Comment(content=form_to_validate.content.data, author=current_user, post_id=post.id, parent_comment_id=parent_id if parent_id else None)
-            db.session.add(comment); db.session.commit()
-            flash('Комментарий добавлен.' if not parent_id else 'Ответ добавлен.', 'success')
-            return redirect(url_for('post_detail', post_id=post_id))
-        else: flash('Ошибка в форме комментария/ответа.', 'danger')
-    comments = get_comments_with_replies(Comment.post_id == post_id)
-    return render_template('post_detail.html', title=post.title, post=post, comments=comments, comment_form=comment_form, reply_form=reply_form)
+        if not current_user.is_authenticated:
+            flash('Пожалуйста, войдите, чтобы оставить комментарий.', 'warning')
+            return redirect(url_for('login', next=request.url)) 
+
+        is_new_comment_submission = request.form.get('submit_comment') == 'true'
+        is_reply_submission = request.form.get('submit_reply') == 'true'
+        parent_comment_id_str = request.form.get('parent_id') 
+
+        form_to_validate = None
+        if is_new_comment_submission:
+            form_to_validate = comment_form
+        elif is_reply_submission and parent_comment_id_str:
+            form_to_validate = reply_form
+        
+        if form_to_validate and form_to_validate.validate_on_submit():
+            new_db_comment = Comment(
+                content=form_to_validate.content.data,
+                author=current_user,
+                post_id=post.id
+            )
+
+            if is_reply_submission and parent_comment_id_str:
+                parent_comment = Comment.query.get(int(parent_comment_id_str))
+                if not parent_comment or parent_comment.post_id != post.id:
+                    flash('Ошибка: Неверный родительский комментарий.', 'danger')
+                    return redirect(url_for('post_detail', post_id=post.id))
+                new_db_comment.parent_comment_id = int(parent_comment_id_str)
+
+            db.session.add(new_db_comment)
+            db.session.commit()
+            flash('Комментарий успешно добавлен.' if is_new_comment_submission else 'Ответ успешно добавлен.', 'success')
+
+            redirect_url = url_for('post_detail', post_id=post.id)
+            if new_db_comment.parent_comment_id: # Если это был ответ
+                redirect_url += f'#comment-{new_db_comment.parent_comment_id}' # Якорь на родительский коммент
+            else: 
+                redirect_url += f'#comment-{new_db_comment.id}' # Якорь на сам новый коммент
+            return redirect(redirect_url)
+        else:
+            if form_to_validate:
+                flash('Ошибка в форме комментария/ответа. Пожалуйста, проверьте введенные данные.', 'danger')
+
+    # --- Логика для GET-запроса или после неудачного POST ---
+    comments = get_comments_with_replies(Comment.post_id == post.id)
+
+    return render_template(
+        'post_detail.html',
+        title=post.title,
+        post=post,                        
+        comments=comments,               
+        comment_form=comment_form,         
+        reply_form=reply_form,           
+        HOMEBREW_TOPICS=HOMEBREW_TOPICS     
+    )
 
 @app.route('/homebrew/new_post', methods=['GET', 'POST'])
 @login_required
 def create_post():
-    form = HomebrewPostForm()
+    form = HomebrewPostForm() 
     if form.validate_on_submit():
-        post = HomebrewPost(title=form.title.data, content=form.content.data, author=current_user)
-        db.session.add(post); db.session.commit()
-        flash('Ваш пост успешно создан!', 'success')
-        return redirect(url_for('post_detail', post_id=post.id))
-    return render_template('create_post.html', title='Создать пост', form=form)
+        post = HomebrewPost(
+            title=form.title.data,
+            content=form.content.data,
+            category=form.category.data, 
+            author=current_user 
+        )
+        db.session.add(post)
+        db.session.commit()
+        flash('Ваш Homebrew пост успешно создан!', 'success')
+        return redirect(url_for('post_detail', post_id=post.id)) # Редирект на созданный пост
+    return render_template('create_post.html', title='Создать Homebrew пост', form=form)
+
+@app.route('/homebrew/post/<int:post_id>/delete', methods=['GET','POST']) 
+def delete_homebrew_post(post_id):
+    post_to_delete = HomebrewPost.query.get_or_404(post_id)
+    
+    can_delete = (post_to_delete.author == current_user or 
+                  (current_user.is_authenticated and current_user.role in ['admin', 'moderator']))
+
+    if not can_delete:
+        flash('У вас нет прав для удаления этого поста.', 'danger')
+        return redirect(url_for('post_detail', post_id=post_id))
+
+    if request.method == 'POST' or request.method == 'GET':
+        try:
+            db.session.delete(post_to_delete)
+            db.session.commit()
+            flash('Пост успешно удален.', 'success')
+            return redirect(url_for('homebrew_index'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Ошибка при удалении поста.', 'danger')
+            print(f"Error deleting post: {e}")
+            return redirect(url_for('post_detail', post_id=post_id))
+    
+    return redirect(url_for('post_detail', post_id=post_id))
 
 # --- Маршрут профиля ---
-@app.route('/profile', methods=['GET', 'POST'])
+@app.route('/profile/', methods=['GET', 'POST'])
+@app.route('/profile/<string:username_to_view>', methods=['GET', 'POST'])
 @login_required
-def profile():
-    form = ProfileUpdateForm(current_user) # Передаем пользователя для валидации
-    password_form = ChangePasswordForm()
+def profile(username_to_view=None):
+    user_to_display = None
+    is_own_profile = False
 
-    profile_update_submitted = form.submit.data and request.form.get('submit') == form.submit.label.text
-    password_change_submitted = password_form.submit_password.data and request.form.get('submit_password') == password_form.submit_password.label.text
+    if username_to_view:
+        # Ищем пользователя по имени, нечувствительно к регистру
+        user_to_display = User.query.filter(User.username.ilike(username_to_view)).first_or_404()
+        # Проверяем, является ли просматриваемый профиль профилем текущего пользователя
+        if current_user.is_authenticated and user_to_display.id == current_user.id:
+            is_own_profile = True
+    elif current_user.is_authenticated: # Если username_to_view не указан, показываем профиль текущего пользователя
+        user_to_display = current_user
+        is_own_profile = True
+    else:
+        # Если пользователь не аутентифицирован и не указано имя для просмотра, перенаправляем на вход
+        flash("Пожалуйста, войдите, чтобы посмотреть свой профиль, или укажите имя пользователя для просмотра.", "info")
+        return redirect(url_for('login'))
 
-    # --- Обработка формы обновления профиля ---
-    if profile_update_submitted and form.validate_on_submit():
-        should_redirect = True # Флаг для редиректа
-        try:
-            new_username = form.username.data.lower()
-            username_changed = new_username != current_user.username
-            if username_changed:
-                # Доп. проверка уникальности (хотя валидатор должен покрывать)
-                existing_user = User.query.filter(User.username == new_username).first()
-                if existing_user:
-                     flash('Это имя пользователя уже занято.', 'danger')
-                     should_redirect = False # Не редиректим, показываем ошибку
-                else:
-                     current_user.username = new_username
+    # Инициализируем формы как None, они нужны только для своего профиля
+    form = None
+    password_form = None
 
-            if should_redirect: # Обновляем остальное только если имя пользователя ОК
-                current_user.description = form.description.data
+    if is_own_profile:
+        form = ProfileUpdateForm(user_to_display)
+        password_form = ChangePasswordForm()
+
+        profile_update_submitted = request.form.get('submit') == form.submit.label.text if request.method == 'POST' and form.submit else False
+        password_change_submitted = request.form.get('submit_password') == password_form.submit_password.label.text if request.method == 'POST' and password_form.submit_password else False
+
+
+        if profile_update_submitted and form.validate_on_submit():
+            try:
+                new_username_data = form.username.data.lower()
+                # Проверяем, изменилось ли имя и не занято ли оно другим пользователем
+                if new_username_data != user_to_display.username:
+                    existing_user = User.query.filter(User.username == new_username_data).first()
+                    if existing_user:
+                        flash('Это имя пользователя уже занято.', 'danger')
+                        # Остаемся на странице, чтобы показать ошибку (нужно передать все переменные снова)
+                        user_posts = user_to_display.posts.order_by(HomebrewPost.timestamp.desc()).limit(10).all()
+                        return render_template('profile.html', title=f'Профиль: {user_to_display.username}',
+                                               user=user_to_display, is_own_profile=is_own_profile,
+                                               avatar_url=user_to_display.get_avatar(),
+                                               form=form, password_form=password_form, user_posts=user_posts)
+                    user_to_display.username = new_username_data
+
+                user_to_display.description = form.description.data
                 if form.avatar.data:
                     picture_file = save_picture(form.avatar.data)
                     if picture_file:
-                        current_user.avatar_filename = picture_file
-                    else: # Ошибка сохранения аватара
-                         should_redirect = False # Не редиректим, т.к. была ошибка
-
-            if should_redirect: # Коммитим только если все ОК
+                        user_to_display.avatar_filename = picture_file
+                
                 db.session.commit()
                 flash('Ваш профиль успешно обновлен!', 'success')
-                return redirect(url_for('profile'))
-
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error updating profile: {e}")
-            flash('Произошла ошибка при обновлении профиля.', 'danger')
-            should_redirect = False # Ошибка - не редиректим
-
-    # --- Обработка формы смены пароля ---
-    elif password_change_submitted and password_form.validate_on_submit():
-        if current_user.check_password(password_form.old_password.data):
-            current_user.set_password(password_form.new_password.data)
-            try:
-                db.session.commit()
-                flash('Пароль успешно изменен!', 'success')
-                return redirect(url_for('profile'))
+                return redirect(url_for('profile', username_to_view=user_to_display.username))
             except Exception as e:
                 db.session.rollback()
-                print(f"Error changing password: {e}")
-                flash('Произошла ошибка при смене пароля.', 'danger')
-        else:
-            password_form.old_password.errors.append('Неверный текущий пароль.')
-            flash('Неверный текущий пароль.', 'danger') # Доп. сообщение
+                print(f"Error updating profile: {e}")
+                flash('Произошла ошибка при обновлении профиля.', 'danger')
 
-    # --- Логика для GET запроса или если валидация форм не прошла ---
-    # Предзаполняем форму профиля текущими данными ТОЛЬКО для GET
-    # или если была отправлена форма профиля и она не прошла валидацию
-    if request.method == 'GET' or (profile_update_submitted and not form.validate()):
-         form.username.data = current_user.username
-         form.description.data = current_user.description
-    # Форму пароля никогда не предзаполняем
+        elif password_change_submitted and password_form.validate_on_submit():
+            if user_to_display.check_password(password_form.old_password.data):
+                user_to_display.set_password(password_form.new_password.data)
+                try:
+                    db.session.commit()
+                    flash('Пароль успешно изменен!', 'success')
+                    return redirect(url_for('profile'))
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Error changing password: {e}")
+                    flash('Произошла ошибка при смене пароля.', 'danger')
+            else:
+                password_form.old_password.errors.append('Неверный текущий пароль.')
 
-    avatar_url = current_user.get_avatar()
-    user_posts = current_user.posts.order_by(HomebrewPost.timestamp.desc()).limit(10).all()
-    return render_template('profile.html', title='Профиль', user=current_user,
-                           avatar_url=avatar_url, form=form, password_form=password_form,
-                           user_posts=user_posts)
+        if request.method == 'GET' and is_own_profile:
+            if form:
+                form.username.data = user_to_display.username
+                form.description.data = user_to_display.description
+
+
+    user_posts = user_to_display.posts.order_by(HomebrewPost.timestamp.desc()).limit(10).all()
+    avatar_url = user_to_display.get_avatar()
+
+    return render_template(
+        'profile.html',
+        title=f'Профиль: {user_to_display.username}',
+        user=user_to_display,
+        is_own_profile=is_own_profile,
+        avatar_url=avatar_url,
+        form=form,
+        password_form=password_form,
+        user_posts=user_posts
+    )
+
+# --- Маршрут для удаления пользователя (только для админов) ---
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST']) # Строго POST для безопасности
+@login_required
+def delete_user_by_admin(user_id):
+    # Проверяем, является ли текущий пользователь админом
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        flash('Доступ запрещен. Только администраторы могут удалять пользователей.', 'danger')
+        return redirect(url_for('index'))
+
+    user_to_delete = User.query.get_or_404(user_id)
+
+    # Запрещаем админу удалять свой собственный аккаунт через эту функцию
+    if user_to_delete.id == current_user.id:
+        flash('Вы не можете удалить свой собственный аккаунт этим способом.', 'warning')
+        return redirect(url_for('profile', username_to_view=user_to_delete.username))
+
+    try:
+        username_deleted = user_to_delete.username
+        db.session.delete(user_to_delete)
+        db.session.commit()
+        flash(f'Пользователь {username_deleted} и весь его контент были успешно удалены.', 'success')
+        return redirect(url_for('index'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении пользователя: {e}', 'danger')
+        print(f"Error deleting user {user_id}: {e}")
+        return redirect(url_for('profile', username_to_view=user_to_delete.username))
 
 # --- 7. Обработчики ошибок ---
 @app.errorhandler(404)
@@ -1766,12 +2031,33 @@ def unauthorized_error(error):
 
 
 # --- 8. Создание таблиц БД (если их нет) ---
-# ВАЖНО: Если таблица user уже существует, добавление поля 'description'
-# не произойдет автоматически через create_all(). Нужно либо удалить
-# старый файл БД (instance/app.db), либо использовать Flask-Migrate.
 with app.app_context():
     db.create_all()
-    # ... (код для добавления начальных данных, если нужно)
+@app.cli.command("set-role")
+@click.argument("username")
+@click.argument("role")
+def set_role_command(username, role):
+    """Назначает роль пользователю.
+    Роли: user, moderator, admin.
+    Пример: flask set-role someuser admin
+    """
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        click.echo(f"Ошибка: Пользователь '{username}' не найден.")
+        return
+
+    allowed_roles = ['user', 'moderator', 'admin']
+    if role not in allowed_roles:
+        click.echo(f"Ошибка: Недопустимая роль '{role}'. Доступные роли: {', '.join(allowed_roles)}.")
+        return
+
+    user.role = role
+    try:
+        db.session.commit()
+        click.echo(f"Пользователю '{username}' успешно назначена роль '{role}'.")
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Ошибка при назначении роли: {e}")
 
 # --- 9. Запуск приложения (для локальной разработки) ---
 if __name__ == '__main__':

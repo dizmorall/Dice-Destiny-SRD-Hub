@@ -1,21 +1,62 @@
 {% extends "layout.html" %}
-{% from "_form_helpers.html" import render_field %} {# Убедись, что этот файл есть #}
+{% from "_form_helpers.html" import render_field %}
 
-{% block title %}Профиль {{ user.username }} - {{ super() }}{% endblock %}
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Левая колонка: Аватар и базовая инфо -->
+<style>
+    .profile-avatar-main {
+        width: 150px;
+        height: 150px;
+        object-fit: cover; 
+        border: 3px solid #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .admin-actions {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #eee;
+        background-color: #fff3f3; 
+        padding: 1rem;
+        border-radius: 5px;
+    }
+    .admin-actions h4 {
+        color: #d93f46;
+    }
+    .user-posts-list .list-group-item {
+        border-left: none;
+        border-right: none;
+    }
+    .user-posts-list .list-group-item:first-child {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+    .user-posts-list .list-group-item:last-child {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        border-bottom: none;
+    }
+</style>
+
+<div class="row profile-container">
+    <!-- Левая колонка: Аватар и базовая инфо просматриваемого пользователя -->
     <div class="col-md-4 text-center mb-4">
-        <img src="{{ avatar_url }}" alt="Аватар пользователя {{ user.username }}" class="img-thumbnail rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+        <img src="{{ avatar_url }}" alt="Аватар пользователя {{ user.username }}" class="img-thumbnail rounded-circle mb-3 profile-avatar-main">
         <h2 class="mb-1">{{ user.username }}</h2>
-        <p class="text-muted small">Зарегистрирован: {{ user.registered_on.strftime('%d.%m.%Y') if user.registered_on else 'Неизвестно' }}</p>
+        {% if user.role == 'admin' %}
+            <span class="badge bg-danger">Администратор</span>
+        {% elif user.role == 'moderator' %}
+            <span class="badge bg-warning text-dark">Модератор</span>
+        {% else %}
+            <span class="badge bg-secondary">Пользователь</span>
+        {% endif %}
+        <p class="text-muted small mt-1">Зарегистрирован: {{ user.registered_on.strftime('%d.%m.%Y в %H:%M') if user.registered_on else 'Неизвестно' }}</p>
 
         <div class="card mt-3">
             <div class="card-body">
                 <h5 class="card-title">О себе:</h5>
                 {% if user.description %}
-                    <p class="card-text text-start" style="white-space: pre-wrap;"><em>{{ user.description }}</em></p> {# white-space: pre-wrap для сохранения переносов #}
+                    <p class="card-text text-start" style="white-space: pre-wrap;"><em>{{ user.description }}</em></p>
                 {% else %}
                     <p class="card-text text-muted"><em>Пользователь пока ничего о себе не рассказал.</em></p>
                 {% endif %}
@@ -23,69 +64,83 @@
         </div>
 
         <div class="mt-4">
-            <h4>Мои Homebrew посты</h4>
+            <h4>Homebrew посты пользователя ({{ user_posts|length }})</h4>
             {% if user_posts %}
-                <ul class="list-group list-group-flush text-start">
-                    {% for post in user_posts %}
+                <ul class="list-group list-group-flush text-start user-posts-list">
+                    {% for post_item in user_posts %} {# Изменил имя переменной цикла, чтобы не конфликтовать с post извне #}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a>
-                            <small class="text-muted ms-2">{{ post.timestamp.strftime('%d.%m.%Y') }}</small>
+                            <a href="{{ url_for('post_detail', post_id=post_item.id) }}">{{ post_item.title }}</a>
+                            <small class="text-muted ms-2">{{ post_item.timestamp.strftime('%d.%m.%y') }}</small>
                         </li>
                     {% endfor %}
-                    {# Можно добавить ссылку "Все посты", если их больше 10 #}
                 </ul>
             {% else %}
-                <p class="text-muted">Вы еще не создали ни одного поста.</p>
+                <p class="text-muted">У пользователя еще нет опубликованных постов.</p>
             {% endif %}
         </div>
-
     </div>
 
-    <!-- Правая колонка: Формы редактирования -->
+    <!-- Правая колонка: Формы редактирования (только для своего профиля) или админ-действия -->
     <div class="col-md-8">
-        <!-- Форма обновления профиля -->
-        <div class="card mb-4">
-            <div class="card-header">
-                Редактировать профиль
+        {# Если это профиль ТЕКУЩЕГО пользователя, показываем формы редактирования #}
+        {% if is_own_profile and form and password_form %} {# Проверяем, что формы существуют #}
+            <h3 class="mb-3">Редактирование моего профиля</h3>
+            <!-- Форма обновления профиля -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Общая информация
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('profile') }}" novalidate>
+                        {{ form.hidden_tag() }}
+                        {{ render_field(form.username, class="form-control" + (' is-invalid' if form.username.errors else '')) }}
+                        {{ render_field(form.description, class="form-control" + (' is-invalid' if form.description.errors else ''), rows="4") }}
+                        {{ render_field(form.avatar, class="form-control" + (' is-invalid' if form.avatar.errors else '')) }}
+                        <button type="submit" name="submit" value="{{ form.submit.label.text }}" class="btn btn-primary mt-2">
+                            {{ form.submit.label.text }}
+                        </button>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                {# enctype ОБЯЗАТЕЛЕН для загрузки файлов #}
-                <form method="POST" enctype="multipart/form-data" action="{{ url_for('profile') }}" novalidate>
-                    {{ form.hidden_tag() }} {# CSRF токен #}
 
-                    {{ render_field(form.username, class="form-control" + (' is-invalid' if form.username.errors else '')) }}
-                    {{ render_field(form.description, class="form-control" + (' is-invalid' if form.description.errors else ''), rows="4") }}
-                    {{ render_field(form.avatar, class="form-control" + (' is-invalid' if form.avatar.errors else '')) }}
+            <!-- Форма смены пароля -->
+            <div class="card">
+                <div class="card-header">
+                    Сменить пароль
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('profile') }}" novalidate>
+                        {{ password_form.hidden_tag() }}
+                        {{ render_field(password_form.old_password, class="form-control" + (' is-invalid' if password_form.old_password.errors else '')) }}
+                        {{ render_field(password_form.new_password, class="form-control" + (' is-invalid' if password_form.new_password.errors else '')) }}
+                        {{ render_field(password_form.confirm_new_password, class="form-control" + (' is-invalid' if password_form.confirm_new_password.errors else '')) }}
+                        <button type="submit" name="submit_password" value="{{ password_form.submit_password.label.text }}" class="btn btn-warning mt-2">
+                             {{ password_form.submit_password.label.text }}
+                         </button>
+                    </form>
+                </div>
+            </div>
+        {% elif not is_own_profile %}
+            {# Если смотрим чужой профиль #}
+            <div class="alert alert-info" role="alert">
+                Вы просматриваете профиль пользователя <strong>{{ user.username }}</strong>.
+            </div>
+        {% endif %}
 
-                    {# Добавим name к кнопке, чтобы различать формы в Flask #}
-                    <button type="submit" name="submit" value="{{ form.submit.label.text }}" class="btn btn-primary">
-                        {{ form.submit.label.text }}
-                    </button>
+        {# Действия администратора (если текущий пользователь - админ И он смотрит НЕ СВОЙ профиль) #}
+        {% if current_user.is_authenticated and current_user.role == 'admin' and not is_own_profile %}
+            <div class="admin-actions">
+                <h4>Действия администратора</h4>
+                <p>Вы можете управлять этим пользователем (<strong>{{ user.username }}</strong>).</p>
+                {# TODO: Добавить изменение роли пользователя #}
+                {# TODO: Добавить блокировку пользователя #}
+                <form method="POST" action="{{ url_for('delete_user_by_admin', user_id=user.id) }}" class="mt-2"
+                      onsubmit="return confirm('ВНИМАНИЕ! Вы уверены, что хотите удалить пользователя {{ user.username }}? Это действие необратимо и удалит все его посты и комментарии!');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Удалить пользователя {{ user.username }} (Админ)</button>
                 </form>
             </div>
-        </div>
-
-        <!-- Форма смены пароля -->
-        <div class="card">
-            <div class="card-header">
-                Сменить пароль
-            </div>
-            <div class="card-body">
-                {# Отдельная форма для смены пароля #}
-                <form method="POST" action="{{ url_for('profile') }}" novalidate>
-                    {{ password_form.hidden_tag() }} {# CSRF токен #}
-
-                    {{ render_field(password_form.old_password, class="form-control" + (' is-invalid' if password_form.old_password.errors else '')) }}
-                    {{ render_field(password_form.new_password, class="form-control" + (' is-invalid' if password_form.new_password.errors else '')) }}
-                    {{ render_field(password_form.confirm_new_password, class="form-control" + (' is-invalid' if password_form.confirm_new_password.errors else '')) }}
-
-                    {# Добавим name к кнопке, чтобы различать формы в Flask #}
-                     <button type="submit" name="submit_password" value="{{ password_form.submit_password.label.text }}" class="btn btn-warning">
-                         {{ password_form.submit_password.label.text }}
-                     </button>
-                </form>
-            </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

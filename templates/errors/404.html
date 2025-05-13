@@ -6,6 +6,9 @@
 <div class="container text-center mt-5">
     <h1 class="display-1">404</h1>
     <h2>Страница не найдена</h2>
+    <div class="pic-container">
+        <img src="{{ url_for('static', filename='404.jpg') }}" alt="404 PIC">
+    </div>
     <p class="lead">К сожалению, страница, которую вы ищете, не существует или была перемещена.</p>
     <a href="{{ url_for('index') }}" class="btn btn-dnd-red mt-3">Вернуться на главную</a>
 </div>

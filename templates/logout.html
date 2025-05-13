@@ -1,78 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logout</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin-top: 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Logging out...</h1>
-        <div class="gif-container">
-            <img src="{{ url_for('static', filename='gifs/vergil-chair.gif') }}" alt="Scum GIF">
-        </div>
-        <p>You will be redirected shortly.</p>
-        <a href="/hi.html" class="btn">Return to Home</a>
+{% extends "layout.html" %} {# Предполагаем, что logout.html тоже наследует layout.html #}
+
+{% block title %}Выход из системы - {{ super() }}{% endblock %}
+
+{% block content %}
+<style>
+    .logout-container {
+        text-align: center;
+        background: white;
+        padding: 30px; 
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); 
+        width: 350px; 
+        margin: 5rem auto; 
+    }
+    .logout-container h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+    .logout-container .gif-container img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .logout-container p {
+        color: #555;
+        margin-bottom: 1.5rem;
+    }
+    .logout-container .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        color: #d93f46; 
+    }
+</style>
+
+<div class="logout-container">
+    <h1>Выход из системы...</h1>
+    <div class="gif-container">
+        <img src="{{ url_for('static', filename='gifs/dnd.gif') }}" alt="Logout GIF">
+    </div>
+    <p>Вы будете перенаправлены на главную страницу через несколько секунд.</p>
+
+    {# Спиннер Bootstrap для индикации загрузки #}
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Загрузка...</span>
     </div>
 
-    <script>
-        async function logout() {
-            try {
-                const response = await fetch('/logout', {
-                    method: 'POST'
-                });
+    {# Кнопка "Вернуться на главную" на случай, если JS не сработает или для немедленного перехода #}
+    <div class="mt-3">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm">Вернуться на главную немедленно</a>
+    </div>
+</div>
+{% endblock %}
 
-                if (response.ok) {
-                    setTimeout(() => {
-                        window.location.href = '/hi.html';
-                    }, 2000);
-                } else {
-                    alert('Failed to log out. Please try again.');
+{% block scripts %}
+{{ super() }} {# Включаем скрипты из layout.html, если они там есть #}
+<script>
+    async function performLogout() {
+        try {
+            const logoutUrl = "{{ url_for('logout_action') }}";
+
+            const response = await fetch(logoutUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An unexpected error occurred.');
-            }
-        }
+            });
 
-        // Trigger logout on page load
-        logout();
-    </script>
-</body>
-</html>
+            if (response.ok) {
+                console.log("Logout successful on server.");
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('index') }}";
+                }, 2000);
+            } else {
+                const errorData = await response.json().catch(() => ({ message: 'Не удалось получить детали ошибки.' }));
+                console.error("Logout failed on server:", response.status, response.statusText, errorData);
+                alert(`Не удалось выйти из системы: ${errorData.message || response.statusText}. Попробуйте обновить страницу.`);
+                 setTimeout(() => {
+                     window.location.href = "{{ url_for('index') }}";
+                 }, 3000);
+            }
+        } catch (error) {
+            console.error('Error during logout fetch:', error);
+            alert('Произошла ошибка при выходе. Попробуйте обновить страницу.');
+             setTimeout(() => {
+                 window.location.href = "{{ url_for('index') }}";
+             }, 3000);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', performLogout);
+</script>
+{% endblock %}
